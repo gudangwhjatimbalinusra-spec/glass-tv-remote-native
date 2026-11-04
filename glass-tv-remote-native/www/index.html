@@ -86,6 +86,39 @@
             overflow-wrap: anywhere;
         }
     </style>
+
+<script>
+// Bridge JavaScript ke native Android ADB. Callback native dikembalikan secara asynchronous.
+(() => {
+  const pending = new Map();
+  let seq = 0;
+  window.__tvAdbCallback = (id, raw) => {
+    const item = pending.get(id);
+    if (!item) return;
+    pending.delete(id);
+    try {
+      const result = JSON.parse(raw);
+      if (result && result.error) item.reject(new Error(result.error));
+      else item.resolve(result);
+    } catch (e) { item.reject(e); }
+  };
+  const invoke = (method, args) => new Promise((resolve, reject) => {
+    if (!window.TvAdbNative || typeof window.TvAdbNative[method] !== 'function') {
+      reject(new Error('Bridge ADB native tidak tersedia.')); return;
+    }
+    const id = `adb_${Date.now()}_${++seq}`;
+    pending.set(id, { resolve, reject });
+    try { window.TvAdbNative[method](...args, id); }
+    catch (e) { pending.delete(id); reject(e); }
+  });
+  window.TvAdb = {
+    connect: ({host, port}) => invoke('connect', [String(host), Number(port)]),
+    pair: ({host, port, code}) => invoke('pair', [String(host), Number(port), String(code)]),
+    shell: ({command}) => invoke('shell', [String(command)]),
+    disconnect: () => invoke('disconnect', [])
+  };
+})();
+</script>
 </head>
 <body class="relative w-full max-w-[100vw] min-h-screen overflow-x-hidden flex flex-col justify-between pb-20 lg:pb-4">
 
@@ -1546,20 +1579,20 @@
             if (badge) { badge.textContent = 'MENGHUBUNGKAN ADB...'; badge.className = 'text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/30 font-extrabold shrink-0'; }
             appendAdbLog(`Memulai koneksi ADB native ke ${targetDev.ip}. Pastikan HP dan TV di WiFi yang sama.`);
             try {
-                if (!window.Capacitor?.Plugins?.TvAdb) throw new Error('Plugin ADB native belum tersedia. APK harus dibangun dari project ini.');
+                if (!window.TvAdb) throw new Error('Plugin ADB native belum tersedia. APK harus dibangun dari project ini.');
                 let result;
                 const mode = (prompt('Jenis Wireless Debugging TV:\nKetik 1 untuk port 5555 (legacy TCP ADB)\nKetik 2 untuk Pairing Android 11+ (kode pairing)', '2') || '').trim();
                 if (mode === '1') {
                     const p = parseInt(prompt('Masukkan port ADB TV (biasanya 5555):', '5555') || '5555', 10);
-                    result = await window.Capacitor.Plugins.TvAdb.connect({host: targetDev.ip, port: p});
+                    result = await window.TvAdb.connect({host: targetDev.ip, port: p});
                 } else if (mode === '2') {
                     const pairPort = parseInt(prompt('Masukkan PORT PAIRING dari menu Pair device with pairing code di TV:', '') || '', 10);
                     const code = (prompt('Masukkan KODE PAIRING 6 digit yang tampil di TV:', '') || '').trim();
                     if (!pairPort || !/^\d{6}$/.test(code)) throw new Error('Port pairing atau kode 6 digit tidak valid.');
-                    result = await window.Capacitor.Plugins.TvAdb.pair({host: targetDev.ip, port: pairPort, code});
+                    result = await window.TvAdb.pair({host: targetDev.ip, port: pairPort, code});
                     const connectPort = parseInt(prompt('Pairing berhasil. Sekarang masukkan PORT koneksi (Wireless debugging, bukan port pairing):', '') || '', 10);
                     if (!connectPort) throw new Error('Port koneksi belum diisi. Buka menu Wireless debugging dan lihat IP address & port.');
-                    result = await window.Capacitor.Plugins.TvAdb.connect({host: targetDev.ip, port: connectPort});
+                    result = await window.TvAdb.connect({host: targetDev.ip, port: connectPort});
                 } else { throw new Error('Pilihan koneksi dibatalkan.'); }
                 isXiaomiConnected = true; connectedTvDevice = {...targetDev, adbPort: result.port || targetDev.adbPort};
                 if (badge) { badge.textContent = `ADB AKTIF (${targetDev.ip})`; badge.className = 'text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/25 text-emerald-300 border border-emerald-400/40 font-extrabold shrink-0'; }
@@ -1577,7 +1610,7 @@
         }
 
         async function disconnectCurrentTv(showMsg = true) {
-            try { if (window.Capacitor?.Plugins?.TvAdb) await window.Capacitor.Plugins.TvAdb.disconnect(); } catch(e) {}
+            try { if (window.TvAdb) await window.TvAdb.disconnect(); } catch(e) {}
             isXiaomiConnected = false; connectedTvDevice = null;
             const badge = document.getElementById('adb-status-badge');
             const topSub = document.getElementById('top-conn-sub');
@@ -1592,7 +1625,7 @@
         // Semua perintah dikirim melalui plugin ADB native.
         async function adbShell(command) {
             if (!ensureTvConnectedOrWarn()) throw new Error('TV belum terhubung');
-            const r = await window.Capacitor.Plugins.TvAdb.shell({command});
+            const r = await window.TvAdb.shell({command});
             if (r.exitCode !== 0) throw new Error(r.output || `ADB exit code ${r.exitCode}`);
             return r.output || '';
         }
