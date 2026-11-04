@@ -56,7 +56,7 @@ jobs:
           android/app/src/main/java/com/ismanto/glasstvremote/
 
           # Tambahkan library Kadb
-          sed -i '/dependencies {/a\    implementation "com.flyfishxu:kadb:2.1.5"' \
+          sed -i '/dependencies {/a\    implementation "com.flyfishxu:kadb:2.1.4"' \
           android/app/build.gradle
 
           # Izin jaringan
