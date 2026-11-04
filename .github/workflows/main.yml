@@ -23,21 +23,19 @@ jobs:
         run: |
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
 
-      - name: Setup Gradle 9.3.1
+      - name: Setup Gradle 8.5
         uses: gradle/actions/setup-gradle@v3
         with:
-          gradle-version: '9.3.1'
+          gradle-version: '8.5'
 
-      - name: Fix Compatibility Properties
+      - name: Clean Conflicting Kotlin Files
         run: |
+          # Hapus folder java kustom agar tidak terjadi error compile Kotlin
+          rm -rf glass-tv-remote-native/android/app/src/main/java/com/ismanto/glasstvremote/* || true
+          
           PROPERTIES_FILE="glass-tv-remote-native/android/gradle.properties"
-          if [ -f "$PROPERTIES_FILE" ]; then
-            echo "android.newDsl=false" >> "$PROPERTIES_FILE"
-            echo "android.suppressUnsupportedCompileSdk=34" >> "$PROPERTIES_FILE"
-          else
-            echo "android.newDsl=false" > "$PROPERTIES_FILE"
-            echo "android.suppressUnsupportedCompileSdk=34" > "$PROPERTIES_FILE"
-          fi
+          echo "android.useAndroidX=true" > "$PROPERTIES_FILE"
+          echo "android.enableJetifier=true" >> "$PROPERTIES_FILE"
 
       - name: Copy www/index.html ke Android Assets
         run: |
@@ -45,12 +43,12 @@ jobs:
           cp -r glass-tv-remote-native/www/* glass-tv-remote-native/android/app/src/main/assets/
           cp -r glass-tv-remote-native/www/* glass-tv-remote-native/android/app/src/main/assets/www/
 
-      - name: Build Debug APK dengan Stacktrace Detail
+      - name: Build Debug APK
         working-directory: ./glass-tv-remote-native/android
         run: |
-          gradle wrapper --gradle-version 9.3.1
+          gradle wrapper --gradle-version 8.5
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace
+          ./gradlew assembleDebug --no-daemon
 
       - name: Upload Hasil APK
         uses: actions/upload-artifact@v4
