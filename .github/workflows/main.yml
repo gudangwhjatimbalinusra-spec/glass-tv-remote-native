@@ -47,6 +47,28 @@ jobs:
         working-directory: ./glass-tv-remote-native
         run: npx cap sync android
 
+      
+      - name: Add JitPack repository
+        working-directory: ./glass-tv-remote-native
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path("android/settings.gradle")
+          s = p.read_text()
+
+          marker = "dependencyResolutionManagement {"
+          if marker not in s:
+              raise SystemExit("Blok dependencyResolutionManagement tidak ditemukan")
+
+          start = s.index(marker)
+          pos = s.index("repositories {", start)
+          insert = pos + len("repositories {")
+          s = s[:insert] + "\n        maven { url 'https://jitpack.io' }" + s[insert:]
+
+          p.write_text(s)
+          PY
+
       - name: Build APK
         working-directory: ./glass-tv-remote-native/android
         run: |
