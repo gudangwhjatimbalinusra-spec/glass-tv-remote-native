@@ -27,17 +27,34 @@ jobs:
           java-version: 21
 
       - name: Install dependencies
+        working-directory: ./glass-tv-remote-native
         run: npm install
 
-      - name: Build Android APK
+      - name: Generate Android project
+        working-directory: ./glass-tv-remote-native
+        run: npx cap add android
+
+      - name: Add native ADB bridge
+        working-directory: ./glass-tv-remote-native
         run: |
-          npx cap sync android
-          cd android
+          mkdir -p android/app/src/main/java/com/ismanto/glasstvremote
+          cp native/android/app/src/main/java/com/ismanto/glasstvremote/*.kt android/app/src/main/java/com/ismanto/glasstvremote/
+          sed -i '/dependencies {/a\    implementation("com.flyfishxu:kadb:2.1.5")' android/app/build.gradle
+          sed -i 's/<application/<application android:usesCleartextTraffic="true"/' android/app/src/main/AndroidManifest.xml
+          sed -i 's/<manifest[^>]*>/&\n    <uses-permission android:name="android.permission.INTERNET" \/>/' android/app/src/main/AndroidManifest.xml
+
+      - name: Sync Capacitor
+        working-directory: ./glass-tv-remote-native
+        run: npx cap sync android
+
+      - name: Build APK
+        working-directory: ./glass-tv-remote-native/android
+        run: |
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew clean assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: GlassTV-Remote-APK
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: glass-tv-remote-native/android/app/build/outputs/apk/debug/app-debug.apk
