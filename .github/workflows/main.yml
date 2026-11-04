@@ -34,49 +34,51 @@ jobs:
         working-directory: ./glass-tv-remote-native
         run: npx cap add android
 
-      - name: Add native ADB bridge
+      - name: Add JitPack and native ADB bridge
         working-directory: ./glass-tv-remote-native
         run: |
+          # Tambahkan repository JitPack untuk dependency ADB
+          cat >> android/build.gradle <<'EOF'
+
+          allprojects {
+              repositories {
+                  google()
+                  mavenCentral()
+                  maven { url 'https://jitpack.io' }
+              }
+          }
+          EOF
+
+          # Salin plugin Kotlin ADB
           mkdir -p android/app/src/main/java/com/ismanto/glasstvremote
-          cp native/android/app/src/main/java/com/ismanto/glasstvremote/*.kt android/app/src/main/java/com/ismanto/glasstvremote/
-          sed -i '/dependencies {/a\    implementation("com.flyfishxu:kadb:2.1.5")' android/app/build.gradle
-          sed -i 's/<application/<application android:usesCleartextTraffic="true"/' android/app/src/main/AndroidManifest.xml
-          sed -i 's/<manifest[^>]*>/&\n    <uses-permission android:name="android.permission.INTERNET" \/>/' android/app/src/main/AndroidManifest.xml
+
+          cp native/android/app/src/main/java/com/ismanto/glasstvremote/*.kt \
+          android/app/src/main/java/com/ismanto/glasstvremote/
+
+          # Tambahkan library Kadb
+          sed -i '/dependencies {/a\    implementation "com.flyfishxu:kadb:2.1.5"' \
+          android/app/build.gradle
+
+          # Izin jaringan
+          sed -i 's/<application/<application android:usesCleartextTraffic="true"/' \
+          android/app/src/main/AndroidManifest.xml
+
+          sed -i 's/<manifest[^>]*>/&\n    <uses-permission android:name="android.permission.INTERNET" \/>/' \
+          android/app/src/main/AndroidManifest.xml
 
       - name: Sync Capacitor
         working-directory: ./glass-tv-remote-native
         run: npx cap sync android
 
-      
-      - name: Add JitPack repository
-        working-directory: ./glass-tv-remote-native
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-
-          p = Path("android/settings.gradle")
-          s = p.read_text()
-
-          marker = "dependencyResolutionManagement {"
-          if marker not in s:
-              raise SystemExit("Blok dependencyResolutionManagement tidak ditemukan")
-
-          start = s.index(marker)
-          pos = s.index("repositories {", start)
-          insert = pos + len("repositories {")
-          s = s[:insert] + "\n        maven { url 'https://jitpack.io' }" + s[insert:]
-
-          p.write_text(s)
-          PY
-
-      - name: Build APK
+      - name: Build Android APK
         working-directory: ./glass-tv-remote-native/android
         run: |
           chmod +x gradlew
-          ./gradlew clean assembleDebug
+          ./gradlew clean assembleDebug --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: GlassTV-Remote-APK
           path: glass-tv-remote-native/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
