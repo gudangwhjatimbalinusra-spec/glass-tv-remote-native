@@ -1,8 +1,9 @@
+
 name: Build Glass TV Remote Native APK
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: ["main", "master"]
   workflow_dispatch:
 
 jobs:
@@ -16,38 +17,37 @@ jobs:
       - name: Setup Java JDK 17
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
-          java-version: '17'
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Gradle 9.3.1
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
 
       - name: Accept Android SDK Licenses
         run: |
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+          yes | sdkmanager --licenses || true
 
-      - name: Setup Gradle 8.5
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: '8.5'
-
-      - name: Clean Conflicting Kotlin Files
+      - name: Install Android SDK 37
         run: |
-          # Hapus folder java kustom agar tidak terjadi error compile Kotlin
-          rm -rf glass-tv-remote-native/android/app/src/main/java/com/ismanto/glasstvremote/* || true
-          
-          PROPERTIES_FILE="glass-tv-remote-native/android/gradle.properties"
-          echo "android.useAndroidX=true" > "$PROPERTIES_FILE"
-          echo "android.enableJetifier=true" >> "$PROPERTIES_FILE"
+          sdkmanager "platforms;android-37" "build-tools;36.0.0"
 
-      - name: Copy www/index.html ke Android Assets
+      - name: Copy Web App Assets
         run: |
           mkdir -p glass-tv-remote-native/android/app/src/main/assets/www
           cp -r glass-tv-remote-native/www/* glass-tv-remote-native/android/app/src/main/assets/
           cp -r glass-tv-remote-native/www/* glass-tv-remote-native/android/app/src/main/assets/www/
 
+      - name: Generate Gradle Wrapper
+        working-directory: ./glass-tv-remote-native/android
+        run: |
+          gradle wrapper --gradle-version 9.3.1
+          chmod +x gradlew
+
       - name: Build Debug APK
         working-directory: ./glass-tv-remote-native/android
         run: |
-          gradle wrapper --gradle-version 8.5
-          chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
 
       - name: Upload Hasil APK
