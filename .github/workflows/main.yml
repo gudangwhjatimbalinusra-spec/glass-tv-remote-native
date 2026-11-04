@@ -25,22 +25,32 @@ jobs:
         with:
           gradle-version: "9.3.1"
 
-      - name: Prepare Android SDK
-        run: |
-          echo "ANDROID_HOME=$ANDROID_HOME"
-          echo "ANDROID_SDK_ROOT=$ANDROID_HOME"
-          ls -la "$ANDROID_HOME"
-          ls -la "$ANDROID_HOME/cmdline-tools" || true
-
-      - name: Install Android SDK Packages
+      - name: Install Android SDK 37.0
         run: |
           SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" -name sdkmanager -type f | head -n 1)
+
           if [ -z "$SDKMANAGER" ]; then
             echo "sdkmanager tidak ditemukan"
             exit 1
           fi
-          yes | "$SDKMANAGER" --licenses || true
-          "$SDKMANAGER" "platforms;android-37" "build-tools;36.0.0"
+
+          yes | "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --licenses || true
+
+          "$SDKMANAGER" --sdk_root="$ANDROID_HOME" \
+            "platforms;android-37.0" \
+            "build-tools;36.0.0" \
+            "platform-tools"
+
+      - name: Fix Android 37 Platform Folder
+        run: |
+          cd "$ANDROID_HOME/platforms"
+          if [ -d "android-37.0" ]; then
+            ln -sfn android-37.0 android-37
+          else
+            echo "Folder android-37.0 tidak ditemukan"
+            exit 1
+          fi
+          ls -la
 
       - name: Copy Web App Assets
         run: |
