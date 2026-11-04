@@ -45,12 +45,12 @@ jobs:
           cp -r glass-tv-remote-native/www/* glass-tv-remote-native/android/app/src/main/assets/
           cp -r glass-tv-remote-native/www/* glass-tv-remote-native/android/app/src/main/assets/www/
 
-      - name: Build Debug APK dengan Gradle
+      - name: Build Debug APK dengan Detail Info
         working-directory: ./glass-tv-remote-native/android
         run: |
           gradle wrapper --gradle-version 9.3.1
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace
+          ./gradlew assembleDebug --no-daemon --info
 
       - name: Upload Hasil APK
         uses: actions/upload-artifact@v4
