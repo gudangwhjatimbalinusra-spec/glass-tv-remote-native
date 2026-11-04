@@ -23,12 +23,12 @@ jobs:
         run: |
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
 
-      - name: Setup Gradle 8.7
+      - name: Setup Gradle 9.3.1
         uses: gradle/actions/setup-gradle@v3
         with:
-          gradle-version: '8.7'
+          gradle-version: '9.3.1'
 
-      - name: Fix Kotlin & AGP Compatibility Properties
+      - name: Fix Compatibility Properties
         run: |
           PROPERTIES_FILE="glass-tv-remote-native/android/gradle.properties"
           if [ -f "$PROPERTIES_FILE" ]; then
@@ -36,7 +36,7 @@ jobs:
             echo "android.suppressUnsupportedCompileSdk=34" >> "$PROPERTIES_FILE"
           else
             echo "android.newDsl=false" > "$PROPERTIES_FILE"
-            echo "android.suppressUnsupportedCompileSdk=34" >> "$PROPERTIES_FILE"
+            echo "android.suppressUnsupportedCompileSdk=34" > "$PROPERTIES_FILE"
           fi
 
       - name: Copy www/index.html ke Android Assets
@@ -48,7 +48,7 @@ jobs:
       - name: Build Debug APK dengan Gradle
         working-directory: ./glass-tv-remote-native/android
         run: |
-          gradle wrapper --gradle-version 8.7
+          gradle wrapper --gradle-version 9.3.1
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon --stacktrace
 
