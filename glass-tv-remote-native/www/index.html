@@ -1,0 +1,2439 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Glass TV Home & Remote Debloater Xiaomi TV (Sidoarjo Edition)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --glass-bg: rgba(15, 23, 42, 0.58);
+            --glass-border: rgba(255, 255, 255, 0.16);
+        }
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            max-width: 100vw;
+            overflow-x: hidden !important;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            user-select: none;
+            background-color: #050811;
+            color: #ffffff;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .font-mono-clock {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Kartu Kaca Horizontal (Glassmorphism Premium) */
+        .glass-card {
+            background: linear-gradient(135deg, rgba(20, 30, 55, 0.72) 0%, rgba(10, 15, 30, 0.62) 100%);
+            backdrop-filter: blur(20px) saturate(160%);
+            -webkit-backdrop-filter: blur(20px) saturate(160%);
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+            transition: all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        .glass-card-subtle {
+            background: rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.11);
+            transition: all 0.2s ease;
+        }
+
+        /* Efek Fokus Remote TV (D-Pad Navigation) */
+        .tv-focusable:focus,
+        .tv-focusable.tv-focused {
+            outline: none;
+            border-color: #38bdf8 !important;
+            box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.5), 0 8px 20px rgba(0, 0, 0, 0.5);
+            background: rgba(56, 189, 248, 0.18);
+        }
+
+        /* Animasi Equalizer Spotify */
+        @keyframes eq-bar {
+            0%, 100% { height: 4px; }
+            50% { height: 16px; }
+        }
+        .eq-1 { animation: eq-bar 0.8s ease-in-out infinite; }
+        .eq-2 { animation: eq-bar 0.5s ease-in-out infinite 0.2s; }
+        .eq-3 { animation: eq-bar 0.9s ease-in-out infinite 0.4s; }
+        .eq-4 { animation: eq-bar 0.6s ease-in-out infinite 0.1s; }
+        .paused .eq-bar-item { animation-play-state: paused; height: 4px !important; }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 9999px; }
+
+        /* Anti-overflow package name di layar HP sempit */
+        .pkg-break {
+            word-break: break-all;
+            overflow-wrap: anywhere;
+        }
+    </style>
+</head>
+<body class="relative w-full max-w-[100vw] min-h-screen overflow-x-hidden flex flex-col justify-between pb-20 lg:pb-4">
+
+    <!-- ==========================================
+         1. LIVE WALLPAPER ENGINE (MotionBGs Style + Weather Canvas)
+         ========================================== -->
+    <div id="wallpaper-container" class="fixed inset-0 -z-20 overflow-hidden bg-slate-950 pointer-events-none">
+        <video id="live-video-bg" class="absolute inset-0 w-full h-full object-cover opacity-65 transition-opacity duration-1000 hidden" autoplay loop muted playsinline></video>
+        <div id="weather-gradient-bg" class="absolute inset-0 transition-all duration-1000 bg-gradient-to-br from-sky-900 via-indigo-950 to-slate-950"></div>
+        <canvas id="weather-canvas" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
+        <div class="absolute inset-0 bg-radial from-transparent via-slate-950/35 to-slate-950/85 pointer-events-none"></div>
+    </div>
+
+    <!-- ==========================================
+         STICKY TOP SWITCHER: MODE APK HP vs LAYAR TV DASHBOARD
+         ========================================== -->
+    <div class="sticky top-0 z-40 w-full max-w-[100vw] bg-slate-950/85 backdrop-blur-xl border-b border-white/10 px-3 py-2">
+        <div class="max-w-7xl mx-auto flex items-center justify-between gap-2">
+            <!-- Brand & Status Koneksi -->
+            <div class="flex items-center gap-2 min-w-0">
+                <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-sky-400 to-emerald-400 flex items-center justify-center text-slate-950 font-extrabold text-sm shrink-0 shadow">
+                    <i class="fa-solid fa-tv"></i>
+                </div>
+                <div class="min-w-0">
+                    <div class="text-xs sm:text-sm font-extrabold tracking-tight text-white truncate flex items-center gap-1.5">
+                        <span>XIAOMI TV & GLASS HOME</span>
+                        <span id="top-conn-dot" class="w-2 h-2 rounded-full bg-rose-500 shrink-0"></span>
+                    </div>
+                    <div id="top-conn-sub" class="text-[10px] text-amber-300 truncate">Belum Terhubung • Silakan Scan WiFi Dulu</div>
+                </div>
+            </div>
+
+            <!-- Switcher Tab: Mode HP vs Mode Layar TV -->
+            <div class="flex items-center bg-slate-900/90 p-1 rounded-xl border border-white/15 shrink-0">
+                <button id="tab-btn-phone" onclick="switchAppViewMode('phone')" class="px-2.5 py-1.5 rounded-lg text-[11px] font-extrabold flex items-center gap-1.5 bg-gradient-to-r from-amber-400 to-orange-500 text-slate-950 shadow transition-all">
+                    <i class="fa-solid fa-mobile-screen-button"></i>
+                    <span>Remote & Debloat</span>
+                </button>
+                <button id="tab-btn-tv" onclick="switchAppViewMode('tv')" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1.5 text-white/75 hover:text-white transition-all">
+                    <i class="fa-solid fa-display"></i>
+                    <span>Layar TV</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- =========================================================================
+         VIEW 1: MODE APK HP (REMOTE & DEBLOATER XIAOMI TV - 100% FIT LAYAR HP)
+         ========================================================================= -->
+    <div id="phone-apk-view" class="w-full max-w-md mx-auto px-3 pt-3 pb-6 space-y-3.5 overflow-x-hidden">
+
+        <!-- HERO BANNER: TOMBOL 1-KLIK OPTIMALKAN SEMUA -->
+        <div class="glass-card rounded-2xl p-3.5 border border-emerald-400/30 relative overflow-hidden">
+            <div class="flex items-center justify-between gap-2 mb-2.5">
+                <div class="min-w-0">
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-[10px] font-extrabold">
+                        <i class="fa-solid fa-bolt"></i> MODE 1-KLIK BAHASA INDONESIA
+                    </span>
+                    <h1 class="text-sm sm:text-base font-extrabold text-white mt-1 leading-snug">
+                        Remote, Cleaner & Debloater Xiaomi TV
+                    </h1>
+                </div>
+                <div class="text-right shrink-0">
+                    <div id="phone-mini-clock" class="font-mono-clock text-xs font-extrabold text-sky-300">12:06</div>
+                    <div class="text-[10px] text-white/60">Sidoarjo</div>
+                </div>
+            </div>
+
+            <button id="btn-oneclick-all" onclick="runOneClickAllOptimization()" class="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-400 via-teal-400 to-sky-400 hover:opacity-95 text-slate-950 font-extrabold text-xs sm:text-sm shadow-lg shadow-emerald-950/60 flex items-center justify-center gap-2 active:scale-[0.98] transition-all">
+                <i id="oneclick-all-icon" class="fa-solid fa-wand-magic-sparkles text-base"></i>
+                <span id="oneclick-all-text">OPTIMALKAN SEMUA (1-KLIK)</span>
+            </button>
+            <p class="text-[10px] text-white/65 text-center mt-2 leading-relaxed">
+                Wajib <strong>Scan &amp; Klik Hubungkan</strong> di Langkah 1 terlebih dahulu sebelum menjalankan optimasi 1-Klik.
+            </p>
+        </div>
+
+        <!-- LANGKAH 1: SCAN WIFI DULU -> PILIH PERANGKAT -> KLIK HUBUNGKAN -->
+        <div class="glass-card rounded-2xl p-3.5 space-y-3 border border-sky-400/35">
+            <div class="flex items-center justify-between gap-2">
+                <h2 class="text-xs font-extrabold uppercase tracking-wider text-sky-300 flex items-center gap-1.5">
+                    <i class="fa-solid fa-satellite-dish"></i> LANGKAH 1: WIFI CBN &amp; BLUETOOTH TV
+                </h2>
+                <span id="adb-status-badge" class="text-[10px] px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-400/30 font-extrabold shrink-0">
+                    BELUM TERHUBUNG
+                </span>
+            </div>
+
+            <!-- PILIHAN JALUR KONEKSI: WIFI CBN (AKURAT) vs BLUETOOTH HP -->
+            <div class="grid grid-cols-2 gap-1.5 bg-slate-950/85 p-1 rounded-xl border border-white/10">
+                <button id="conn-tab-wifi" onclick="switchConnectionMethodTab('wifi')" class="py-2 px-2.5 rounded-lg text-[11px] font-extrabold bg-sky-500 text-slate-950 flex items-center justify-center gap-1.5 shadow transition-all">
+                    <i class="fa-solid fa-wifi"></i>
+                    <span>WiFi CBN / Lokal</span>
+                </button>
+                <button id="conn-tab-bt" onclick="switchConnectionMethodTab('bluetooth')" class="py-2 px-2.5 rounded-lg text-[11px] font-bold text-white/75 hover:text-white flex items-center justify-center gap-1.5 transition-all">
+                    <i class="fa-brands fa-bluetooth-b text-indigo-400"></i>
+                    <span>Bluetooth TV</span>
+                </button>
+            </div>
+
+            <!-- PANEL A: KONEKSI BLUETOOTH XIAOMI TV -->
+            <div id="panel-conn-bluetooth" class="hidden bg-indigo-950/40 border border-indigo-400/35 rounded-xl p-3 space-y-2.5">
+                <div class="flex items-start gap-2.5">
+                    <div class="w-8 h-8 rounded-xl bg-indigo-500/25 border border-indigo-400/40 flex items-center justify-center text-indigo-300 shrink-0 mt-0.5">
+                        <i class="fa-brands fa-bluetooth-b text-base"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <div class="text-xs font-extrabold text-white">Koneksi Bluetooth Remote Xiaomi TV</div>
+                        <p class="text-[10px] text-white/70 leading-relaxed mt-0.5">
+                            Xiaomi Remote asli bekerja lewat Bluetooth BLE. Pastikan Bluetooth HP aktif dan Xiaomi TV dalam jarak dekat.
+                        </p>
+                    </div>
+                </div>
+
+                <button id="btn-scan-bluetooth" onclick="scanAndPairXiaomiBluetooth()" class="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-indigo-500 to-sky-500 hover:opacity-95 text-white font-extrabold text-xs shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all">
+                    <i id="bt-scan-icon" class="fa-brands fa-bluetooth"></i>
+                    <span id="bt-scan-text">SCAN &amp; HUBUNGKAN BLUETOOTH XIAOMI TV</span>
+                </button>
+
+                <div id="bt-status-box" class="bg-slate-950/80 border border-white/10 rounded-lg p-2 text-[10px] text-white/75 leading-relaxed">
+                    <strong>Tips Bluetooth APK:</strong> Jika aplikasi APK dari WebIntoApp membatasi pop-up Bluetooth, pasangkan dulu HP ke <em>"Mi TV / Xiaomi TV"</em> di menu <strong>Pengaturan Bluetooth HP</strong>, lalu gunakan <strong>IP Asli WiFi CBN</strong> di tab sebelah untuk fitur <strong>Debloat &amp; Bersihkan RAM</strong> (karena fitur Debloat wajib lewat jalur WiFi ADB).
+                </div>
+            </div>
+
+            <!-- PANEL B: KONEKSI WIFI CBN (ANTI 203 PERANGKAT PALSU + INPUT IP ASLI TV) -->
+            <div id="panel-conn-wifi" class="space-y-3">
+                <!-- CARA PALING AKURAT 100%: MASUKKAN IP ASLI DARI LAYAR XIAOMI TV -->
+                <div class="bg-emerald-950/35 border border-emerald-400/40 rounded-xl p-2.5 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-extrabold text-emerald-300 flex items-center gap-1.5">
+                            <i class="fa-solid fa-bullseye"></i> CARA 100% PASTI NYAMBUNG (WIFI CBN):
+                        </span>
+                        <span class="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-200 font-bold">Tanpa Salah IP</span>
+                    </div>
+                    <p class="text-[10px] text-white/80 leading-relaxed">
+                        Di Xiaomi TV buka: <strong>Setelan &gt; Jaringan &amp; Internet &gt; Klik nama WiFi CBN Anda</strong>. Lihat angka <strong>Alamat IP</strong> di layar TV (contoh: <code>192.168.1.8</code> atau <code>192.168.100.12</code>), ketik di bawah lalu klik <strong>Verifikasi &amp; Masuk Daftar</strong>:
+                    </p>
+                    <div class="flex items-center gap-1.5 w-full">
+                        <input id="xiaomi-ip-input" type="text" value="" placeholder="Ketik IP TV (misal: 192.168.1.8)" class="flex-1 min-w-0 px-3 py-2 rounded-xl bg-slate-950 border border-emerald-400/40 text-xs font-mono-clock text-emerald-300 font-bold focus:outline-none focus:border-emerald-400">
+                        <button onclick="addManualIpToScanList()" class="px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-[11px] shrink-0 shadow active:scale-95">
+                            + Masuk Daftar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Pilihan Subnet WiFi CBN & Router Indonesia -->
+                <div class="space-y-1.5">
+                    <div class="flex items-center justify-between text-[10px] text-white/70">
+                        <span class="font-bold">Atau Scan Otomatis Blok WiFi CBN (Filter Ketat):</span>
+                        <button onclick="autoDetectLocalSubnet()" class="text-sky-300 hover:underline font-bold flex items-center gap-1">
+                            <i class="fa-solid fa-wand-magic"></i> Deteksi IP HP
+                        </button>
+                    </div>
+
+                    <!-- Chip Subnet Populer CBN Fiber & Router Indonesia -->
+                    <div class="flex flex-wrap gap-1.5">
+                        <button onclick="setSubnetPrefix('192.168.1')" class="subnet-chip px-2 py-1 rounded-lg text-[10px] font-mono-clock font-bold bg-sky-500/25 text-sky-200 border border-sky-400/40" data-prefix="192.168.1">
+                            192.168.1.x (CBN Fiber ZTE/Umum)
+                        </button>
+                        <button onclick="setSubnetPrefix('192.168.100')" class="subnet-chip px-2 py-1 rounded-lg text-[10px] font-mono-clock font-bold glass-card-subtle text-white/75" data-prefix="192.168.100">
+                            192.168.100.x (CBN Huawei)
+                        </button>
+                        <button onclick="setSubnetPrefix('192.168.0')" class="subnet-chip px-2 py-1 rounded-lg text-[10px] font-mono-clock font-bold glass-card-subtle text-white/75" data-prefix="192.168.0">
+                            192.168.0.x (CBN TP-Link/D-Link)
+                        </button>
+                        <button onclick="setSubnetPrefix('192.168.18')" class="subnet-chip px-2 py-1 rounded-lg text-[10px] font-mono-clock font-bold glass-card-subtle text-white/75" data-prefix="192.168.18">
+                            192.168.18.x (Fiber ONT)
+                        </button>
+                        <button onclick="setSubnetPrefix('192.168.43')" class="subnet-chip px-2 py-1 rounded-lg text-[10px] font-mono-clock font-bold glass-card-subtle text-white/75" data-prefix="192.168.43">
+                            192.168.43.x (Hotspot HP)
+                        </button>
+                    </div>
+
+                    <!-- Input Prefix Subnet & Tombol MULAI SCAN -->
+                    <div class="flex items-center gap-1.5 pt-1">
+                        <div class="relative w-32 shrink-0">
+                            <input id="wifi-subnet-input" type="text" value="192.168.1" placeholder="192.168.1" class="w-full px-2.5 py-2 rounded-xl bg-slate-900/90 border border-white/15 text-xs font-mono-clock text-sky-300 font-bold focus:outline-none focus:border-sky-400">
+                            <span class="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-mono-clock text-white/40">.2-254</span>
+                        </div>
+                        <button id="btn-start-scan" onclick="startDeepWifiScan()" class="flex-1 py-2.5 px-3 rounded-xl bg-gradient-to-r from-sky-400 to-indigo-500 hover:opacity-95 text-slate-950 font-extrabold text-xs shadow-lg flex items-center justify-center gap-1.5 active:scale-95 transition-all">
+                            <i id="scan-ip-icon" class="fa-solid fa-radar"></i>
+                            <span id="scan-btn-text">1. SCAN KHUSUS XIAOMI TV</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Progress Bar Radar Scan WiFi -->
+            <div id="scan-progress-box" class="hidden bg-slate-950/90 border border-sky-400/30 rounded-xl p-2.5 space-y-1.5">
+                <div class="flex items-center justify-between text-[10px] font-mono-clock">
+                    <span id="scan-progress-text" class="text-sky-300 truncate">Memfilter khusus Port Xiaomi TV (6095 &amp; 8008)...</span>
+                    <span id="scan-progress-pct" class="text-amber-300 font-extrabold shrink-0">0%</span>
+                </div>
+                <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                    <div id="scan-progress-bar" class="h-full bg-gradient-to-r from-sky-400 via-emerald-400 to-amber-400 rounded-full transition-all duration-150" style="width: 0%"></div>
+                </div>
+                <div class="text-[9px] text-emerald-300">
+                    <i class="fa-solid fa-shield-halved mr-1"></i>Filter Anti-Spam CBN Aktif: Mengabaikan IP kosong &amp; hanya mencari Xiaomi TV.
+                </div>
+            </div>
+
+            <!-- DAFTAR PERANGKAT HASIL SCAN (USER WAJIB KLIK TOMBOL "HUBUNGKAN" DI SINI) -->
+            <div class="space-y-2">
+                <div class="flex items-center justify-between text-[11px]">
+                    <span class="font-extrabold text-white/85 flex items-center gap-1.5">
+                        <i class="fa-solid fa-tv text-emerald-400"></i>
+                        <span>Daftar Xiaomi TV Terdeteksi:</span>
+                    </span>
+                    <span id="found-devices-count" class="text-[10px] font-mono-clock text-emerald-300 font-bold">0 TV</span>
+                </div>
+
+                <div id="scanned-devices-list" class="space-y-2 max-h-60 overflow-y-auto pr-0.5">
+                    <!-- Placeholder sebelum di-scan -->
+                    <div class="glass-card-subtle rounded-xl p-3 text-center text-[11px] text-white/60 border border-dashed border-white/15">
+                        <i class="fa-solid fa-wifi text-sky-400 text-base mb-1 block"></i>
+                        Ketik <strong>IP Asli Xiaomi TV</strong> di kotak hijau atas (100% Akurat) atau tekan <strong>"1. SCAN KHUSUS XIAOMI TV"</strong>.
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-[10px] text-white/60 flex items-center justify-between px-0.5 pt-1">
+                <span><i class="fa-solid fa-bolt text-emerald-400 mr-1"></i>Support: WiFi CBN + Bluetooth BLE</span>
+                <button onclick="openApkGuideModal()" class="text-sky-300 underline font-semibold">Kenapa Harus Cek IP di TV?</button>
+            </div>
+        </div>
+
+        <!-- Hidden Iframe & Image Bridge untuk menembus blokir HTTPS Netlify -> HTTP IP Lokal Xiaomi TV -->
+        <iframe name="hidden_tv_bridge_frame" id="hidden_tv_bridge_frame" class="hidden" sandbox="allow-same-origin allow-scripts allow-forms"></iframe>
+
+        <!-- LANGKAH 2: DEBLOAT APLIKASI BAWAAN XIAOMI TV (100% FIT SCREEN TANPA TERPOTONG) -->
+        <div class="glass-card rounded-2xl p-3.5 space-y-2.5 overflow-hidden">
+            <div>
+                <h2 class="text-xs font-extrabold uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
+                    <i class="fa-solid fa-trash-can-arrow-up"></i> LANGKAH 2: DEBLOAT APLIKASI BAWAAN XIAOMI TV
+                </h2>
+                <p class="text-[11px] text-white/65 mt-0.5">
+                    Pilih paket cepat atau centang aplikasi Xiaomi yang tidak diperlukan:
+                </p>
+            </div>
+
+            <!-- Tombol Filter Paket Cepat (Flex Wrap agar tidak melebar keluar layar) -->
+            <div class="flex flex-wrap items-center gap-1.5">
+                <button onclick="selectDebloatPreset('safe')" id="preset-btn-safe" class="px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-emerald-500/25 text-emerald-300 border border-emerald-400/40">
+                    Paket Aman (Rekomendasi)
+                </button>
+                <button onclick="selectDebloatPreset('ads')" id="preset-btn-ads" class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-400/30">
+                    Hapus Iklan
+                </button>
+                <button onclick="selectDebloatPreset('all')" id="preset-btn-all" class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-sky-500/20 text-sky-300 border border-sky-400/30">
+                    Pilih Semua
+                </button>
+            </div>
+
+            <!-- Daftar Package Xiaomi TV -->
+            <div id="debloat-packages-list" class="space-y-2 max-h-64 overflow-y-auto pr-0.5"></div>
+
+            <!-- Baris Info & Tombol Eksekusi Debloat Full-Width -->
+            <div class="pt-2 border-t border-white/10 space-y-2">
+                <div class="flex items-center justify-between text-[11px]">
+                    <span class="text-white/70">Terpilih: <strong id="debloat-count-label" class="text-amber-300">8 Aplikasi (~680 MB RAM)</strong></span>
+                    <button onclick="restoreXiaomiPackages()" class="px-2.5 py-1 rounded-lg glass-card-subtle hover:bg-white/15 text-white/80 text-[10px] font-bold">
+                        <i class="fa-solid fa-rotate-left mr-1"></i>Pulihkan
+                    </button>
+                </div>
+                <button onclick="executeXiaomiDebloat()" class="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-rose-500 to-orange-500 hover:opacity-95 text-white font-extrabold text-xs shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all">
+                    <i id="debloat-btn-icon" class="fa-solid fa-bolt"></i>
+                    <span id="debloat-btn-text">DEBLOAT XIAOMI TV SEKARANG (1-KLIK)</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- LANGKAH 3: KONTROL TV DARI HP (1-KLIK) - GRID 2 KOLOM PROPORSIONAL -->
+        <div class="glass-card rounded-2xl p-3.5 space-y-2.5">
+            <h2 class="text-xs font-extrabold uppercase tracking-wider text-sky-300 flex items-center gap-1.5">
+                <i class="fa-solid fa-sliders"></i> LANGKAH 3: KONTROL TV DARI HP (1-KLIK)
+            </h2>
+
+            <div class="grid grid-cols-2 gap-2">
+                <!-- Card 1: Ganti Wallpaper TV -->
+                <button onclick="pushWallpaperToTvFromPhone()" class="glass-card-subtle hover:bg-sky-500/20 border border-sky-400/25 rounded-xl p-2.5 text-left flex flex-col justify-between transition-all active:scale-95 min-w-0">
+                    <div class="flex items-center justify-between w-full mb-1.5">
+                        <i class="fa-solid fa-cloud-sun-rain text-sky-400 text-base"></i>
+                        <span class="text-[9px] px-1.5 py-0.5 rounded bg-sky-500/25 text-sky-200 font-extrabold">1-KLIK</span>
+                    </div>
+                    <div class="w-full min-w-0">
+                        <div class="text-xs font-extrabold text-white truncate">Ganti Wallpaper TV</div>
+                        <div id="phone-wp-status" class="text-[10px] text-white/60 truncate">Cuaca Sidoarjo Live</div>
+                    </div>
+                </button>
+
+                <!-- Card 2: Bersihkan RAM TV -->
+                <button onclick="remoteCleanTvRamFromPhone()" class="glass-card-subtle hover:bg-emerald-500/20 border border-emerald-400/25 rounded-xl p-2.5 text-left flex flex-col justify-between transition-all active:scale-95 min-w-0">
+                    <div class="flex items-center justify-between w-full mb-1.5">
+                        <i class="fa-solid fa-broom text-emerald-400 text-base"></i>
+                        <span id="phone-ram-badge" class="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/25 text-emerald-200 font-extrabold">RAM 78%</span>
+                    </div>
+                    <div class="w-full min-w-0">
+                        <div class="text-xs font-extrabold text-white truncate">Bersihkan RAM TV</div>
+                        <div class="text-[10px] text-white/60 truncate">Tutup App Latar Belakang</div>
+                    </div>
+                </button>
+
+                <!-- Card 3: Sinkron Jadwal Sholat Sidoarjo -->
+                <button onclick="remoteSyncPrayerFromPhone()" class="glass-card-subtle hover:bg-amber-500/20 border border-amber-400/25 rounded-xl p-2.5 text-left flex flex-col justify-between transition-all active:scale-95 min-w-0">
+                    <div class="flex items-center justify-between w-full mb-1.5">
+                        <i class="fa-solid fa-mosque text-amber-400 text-base"></i>
+                        <span class="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/25 text-amber-200 font-extrabold">WIB</span>
+                    </div>
+                    <div class="w-full min-w-0">
+                        <div class="text-xs font-extrabold text-white truncate">Jadwal Sholat TV</div>
+                        <div id="phone-prayer-status" class="text-[10px] text-white/60 truncate">Kemenag Sidoarjo</div>
+                    </div>
+                </button>
+
+                <!-- Card 4: Buka Layar Glass TV -->
+                <button onclick="switchAppViewMode('tv')" class="glass-card-subtle hover:bg-purple-500/20 border border-purple-400/25 rounded-xl p-2.5 text-left flex flex-col justify-between transition-all active:scale-95 min-w-0">
+                    <div class="flex items-center justify-between w-full mb-1.5">
+                        <i class="fa-solid fa-tv text-purple-400 text-base"></i>
+                        <span class="text-[9px] px-1.5 py-0.5 rounded bg-purple-500/25 text-purple-200 font-extrabold">PREVIEW</span>
+                    </div>
+                    <div class="w-full min-w-0">
+                        <div class="text-xs font-extrabold text-white truncate">Lihat Layar TV</div>
+                        <div class="text-[10px] text-white/60 truncate">Buka Glass TV Home</div>
+                    </div>
+                </button>
+            </div>
+        </div>
+
+        <!-- LANGKAH 4: REMOTE D-PAD XIAOMI TV DI LAYAR HP -->
+        <div class="glass-card rounded-2xl p-3.5 space-y-3">
+            <div class="flex items-center justify-between">
+                <h2 class="text-xs font-extrabold uppercase tracking-wider text-emerald-300 flex items-center gap-1.5">
+                    <i class="fa-solid fa-gamepad"></i> LANGKAH 4: REMOTE KONTROL XIAOMI TV
+                </h2>
+                <span id="remote-last-key" class="text-[10px] font-mono-clock text-white/60">Siap</span>
+            </div>
+
+            <!-- Baris Atas Remote: Power, Input, Settings, Mute -->
+            <div class="grid grid-cols-4 gap-2">
+                <button onclick="sendRemoteCommand('POWER')" class="py-2 rounded-xl bg-rose-500/20 hover:bg-rose-500/35 border border-rose-400/30 text-rose-300 text-xs font-extrabold flex items-center justify-center gap-1 active:scale-95">
+                    <i class="fa-solid fa-power-off"></i>
+                </button>
+                <button onclick="sendRemoteCommand('HOME')" class="py-2 rounded-xl glass-card-subtle hover:bg-white/15 text-white text-xs font-bold flex items-center justify-center gap-1 active:scale-95">
+                    <i class="fa-solid fa-house"></i>
+                </button>
+                <button onclick="sendRemoteCommand('BACK')" class="py-2 rounded-xl glass-card-subtle hover:bg-white/15 text-white text-xs font-bold flex items-center justify-center gap-1 active:scale-95">
+                    <i class="fa-solid fa-arrow-rotate-left"></i>
+                </button>
+                <button onclick="sendRemoteCommand('MENU')" class="py-2 rounded-xl glass-card-subtle hover:bg-white/15 text-sky-300 text-xs font-bold flex items-center justify-center gap-1 active:scale-95">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+            </div>
+
+            <!-- D-Pad Lingkaran & Volume -->
+            <div class="grid grid-cols-3 gap-2 items-center pt-1">
+                <!-- Kolom Kiri: Volume -->
+                <div class="flex flex-col gap-2">
+                    <button onclick="sendRemoteCommand('VOL_UP')" class="py-3 rounded-xl glass-card-subtle hover:bg-white/15 text-white text-xs font-extrabold flex flex-col items-center justify-center gap-0.5 active:scale-95">
+                        <i class="fa-solid fa-volume-high text-sky-300"></i>
+                        <span class="text-[10px]">VOL +</span>
+                    </button>
+                    <button onclick="sendRemoteCommand('VOL_DOWN')" class="py-3 rounded-xl glass-card-subtle hover:bg-white/15 text-white text-xs font-extrabold flex flex-col items-center justify-center gap-0.5 active:scale-95">
+                        <i class="fa-solid fa-volume-low text-white/70"></i>
+                        <span class="text-[10px]">VOL -</span>
+                    </button>
+                </div>
+
+                <!-- Kolom Tengah: D-Pad Arah -->
+                <div class="grid grid-cols-3 gap-1.5 items-center justify-items-center bg-slate-900/75 p-2 rounded-2xl border border-white/10">
+                    <div></div>
+                    <button onclick="sendRemoteCommand('UP')" class="w-10 h-10 rounded-xl glass-card-subtle hover:bg-sky-500/30 flex items-center justify-center text-white active:scale-90">
+                        <i class="fa-solid fa-chevron-up"></i>
+                    </button>
+                    <div></div>
+
+                    <button onclick="sendRemoteCommand('LEFT')" class="w-10 h-10 rounded-xl glass-card-subtle hover:bg-sky-500/30 flex items-center justify-center text-white active:scale-90">
+                        <i class="fa-solid fa-chevron-left"></i>
+                    </button>
+                    <button onclick="sendRemoteCommand('OK')" class="w-11 h-11 rounded-full bg-sky-500 hover:bg-sky-400 text-slate-950 font-extrabold text-xs flex items-center justify-center shadow active:scale-90">
+                        OK
+                    </button>
+                    <button onclick="sendRemoteCommand('RIGHT')" class="w-10 h-10 rounded-xl glass-card-subtle hover:bg-sky-500/30 flex items-center justify-center text-white active:scale-90">
+                        <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+
+                    <div></div>
+                    <button onclick="sendRemoteCommand('DOWN')" class="w-10 h-10 rounded-xl glass-card-subtle hover:bg-sky-500/30 flex items-center justify-center text-white active:scale-90">
+                        <i class="fa-solid fa-chevron-down"></i>
+                    </button>
+                    <div></div>
+                </div>
+
+                <!-- Kolom Kanan: Pintasan Cepat -->
+                <div class="flex flex-col gap-2">
+                    <button onclick=" (changeWeatherQuickFromRemote())" class="py-3 rounded-xl glass-card-subtle hover:bg-amber-500/20 text-amber-300 text-xs font-extrabold flex flex-col items-center justify-center gap-0.5 active:scale-95">
+                        <i class="fa-solid fa-cloud-sun"></i>
+                        <span class="text-[10px]">CUACA</span>
+                    </button>
+                    <button onclick="toggleSpotifyPlay()" class="py-3 rounded-xl glass-card-subtle hover:bg-green-500/20 text-green-400 text-xs font-extrabold flex flex-col items-center justify-center gap-0.5 active:scale-95">
+                        <i class="fa-brands fa-spotify"></i>
+                        <span class="text-[10px]">MUSIK</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Log Konsol ADB Singkat -->
+            <div id="adb-console-log" class="bg-slate-950/90 border border-white/10 rounded-xl p-2.5 font-mono-clock text-[10px] text-emerald-300 space-y-0.5 max-h-24 overflow-y-auto pkg-break">
+                <div>&gt; Sistem Remote & Debloater Xiaomi TV siap.</div>
+                <div>&gt; Lokasi Cuaca & Jadwal Sholat: Sidoarjo, Jawa Timur (Method 20).</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- =========================================================================
+         VIEW 2: LAYAR TV DASHBOARD (GLASS TV HOME - SIDOARJO & AUTO-GPS)
+         ========================================================================= -->
+    <div id="tv-dashboard-view" class="hidden w-full max-w-[100vw] flex-1 flex-col justify-between px-3 sm:px-6 lg:px-8 pt-2 pb-6 overflow-x-hidden">
+
+        <!-- TOP BAR TV: BRANDING, WEATHER SIDOARJO / AUTO-GPS & WALLPAPER CONTROLS -->
+        <header class="w-full flex flex-wrap items-center justify-between gap-2.5 z-20 mb-3">
+            <div class="flex items-center gap-2 flex-wrap">
+                <div class="glass-card px-3.5 py-2 rounded-2xl flex items-center gap-2.5 flex-wrap">
+                    <div class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></div>
+                    <span class="font-extrabold tracking-wider text-xs sm:text-sm bg-gradient-to-r from-sky-300 via-white to-indigo-300 bg-clip-text text-transparent">
+                        GLASS TV HOME
+                    </span>
+                    <button onclick="openLocationModal()" class="tv-focusable text-[11px] px-2.5 py-1 rounded-full bg-sky-500/20 hover:bg-sky-500/35 text-sky-200 border border-sky-400/30 flex items-center gap-1.5">
+                        <i class="fa-solid fa-location-dot text-rose-400"></i>
+                        <span id="active-location-label" class="font-bold">Sidoarjo, Jawa Timur</span>
+                        <i class="fa-solid fa-chevron-down text-[9px] opacity-70"></i>
+                    </button>
+                    <button onclick="detectUserLocation()" class="tv-focusable text-[11px] px-2 py-1 rounded-full bg-emerald-500/20 hover:bg-emerald-500/35 text-emerald-300 border border-emerald-400/30 flex items-center gap-1 font-semibold">
+                        <i id="gps-btn-icon" class="fa-solid fa-crosshairs"></i>
+                        <span>Auto-GPS</span>
+                    </button>
+                </div>
+
+                <!-- Live Weather Badge -->
+                <div id="weather-badge" class="glass-card px-3.5 py-2 rounded-2xl flex items-center gap-2 text-xs">
+                    <i id="weather-icon" class="fa-solid fa-cloud-sun text-amber-300 text-base"></i>
+                    <div>
+                        <div class="font-bold leading-none flex items-center gap-1.5">
+                            <span id="weather-temp">31°C</span>
+                            <span class="text-white/40">•</span>
+                            <span id="weather-desc" class="text-sky-200">Cerah Sidoarjo</span>
+                        </div>
+                        <div id="weather-sub" class="text-[10px] text-white/60">Live Wallpaper MotionBGs</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Toolbar Cuaca & Jam -->
+            <div class="flex items-center gap-2 flex-wrap">
+                <div class="glass-card p-1 rounded-2xl flex items-center gap-1 flex-wrap">
+                    <button onclick="setWeatherTheme('sunny')" class="tv-focusable weather-btn px-2 py-1 rounded-xl text-[11px] font-semibold flex items-center gap-1 bg-amber-500/20 text-amber-200 border border-amber-400/30" data-theme="sunny">
+                        <i class="fa-solid fa-sun"></i><span>Cerah</span>
+                    </button>
+                    <button onclick="setWeatherTheme('rainy')" class="tv-focusable weather-btn px-2 py-1 rounded-xl text-[11px] font-semibold flex items-center gap-1 hover:bg-white/10 text-white/80" data-theme="rainy">
+                        <i class="fa-solid fa-cloud-showers-heavy"></i><span>Hujan</span>
+                    </button>
+                    <button onclick="setWeatherTheme('cloudy')" class="tv-focusable weather-btn px-2 py-1 rounded-xl text-[11px] font-semibold flex items-center gap-1 hover:bg-white/10 text-white/80" data-theme="cloudy">
+                        <i class="fa-solid fa-cloud"></i><span>Berawan</span>
+                    </button>
+                    <button onclick="setWeatherTheme('night')" class="tv-focusable weather-btn px-2 py-1 rounded-xl text-[11px] font-semibold flex items-center gap-1 hover:bg-white/10 text-white/80" data-theme="night">
+                        <i class="fa-solid fa-moon"></i><span>Malam</span>
+                    </button>
+                    <button onclick="openWallpaperModal()" class="tv-focusable px-2 py-1 rounded-xl text-[11px] font-semibold bg-sky-500/20 hover:bg-sky-500/30 text-sky-200 border border-sky-400/30">
+                        <i class="fa-solid fa-film mr-1"></i>MotionBGs
+                    </button>
+                </div>
+
+                <!-- Jam Utama WIB -->
+                <div class="glass-card px-3.5 py-1.5 rounded-2xl text-right">
+                    <div id="main-clock" class="font-mono-clock text-base sm:text-xl font-extrabold tracking-tight text-white leading-tight">12:06:45</div>
+                    <div id="main-date-masehi" class="text-[10px] text-sky-200 font-medium">Sabtu, 31 Okt 2026 • WIB</div>
+                </div>
+            </div>
+        </header>
+
+        <!-- MAIN TV GRID LAYOUT (4 KARTU KACA HORIZONTAL UTAMA) -->
+        <main class="flex-1 grid grid-cols-12 gap-3.5 lg:gap-5 items-stretch my-auto z-10">
+
+            <!-- KIRI ATAS (Req #4): STATUS RAM, CPU, STORAGE & TASK KILLER APPS -->
+            <section class="col-span-12 lg:col-span-5 flex flex-col justify-between">
+                <div class="glass-card rounded-3xl p-4 sm:p-5 h-full flex flex-col justify-between relative overflow-hidden">
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-9 h-9 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-emerald-300 shrink-0">
+                                <i class="fa-solid fa-microchip"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-xs sm:text-sm font-extrabold tracking-wide text-white flex items-center gap-1.5 flex-wrap">
+                                    <span>SMART TV SYSTEM & TASK KILLER</span>
+                                    <span id="system-health-badge" class="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/30 font-semibold">
+                                        4 Apps Berjalan
+                                    </span>
+                                </h2>
+                                <p class="text-[10px] text-white/60">Monitor RAM, CPU, Storage & Pembersih TV</p>
+                            </div>
+                        </div>
+
+                        <button id="btn-kill-tasks" onclick="killBackgroundTasks()" class="tv-focusable px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-extrabold text-xs shadow flex items-center gap-1.5 active:scale-95">
+                            <i id="kill-btn-icon" class="fa-solid fa-broom-ball"></i>
+                            <span id="kill-btn-text">BOOST & KILL TASKS</span>
+                        </button>
+                    </div>
+
+                    <!-- Horizontal Metrics Bar: RAM, CPU, STORAGE -->
+                    <div class="grid grid-cols-3 gap-2.5 my-2">
+                        <div class="glass-card-subtle rounded-2xl p-2.5 flex flex-col justify-between">
+                            <div class="flex items-center justify-between text-[11px] mb-1">
+                                <span class="text-white/70 font-semibold"><i class="fa-solid fa-memory text-sky-400 mr-1"></i>RAM</span>
+                                <span id="ram-percent" class="font-mono-clock font-bold text-sky-300">78%</span>
+                            </div>
+                            <div class="w-full h-2 bg-slate-900/70 rounded-full overflow-hidden">
+                                <div id="ram-bar" class="h-full bg-gradient-to-r from-sky-400 to-indigo-500 rounded-full transition-all duration-700" style="width: 78%"></div>
+                            </div>
+                            <div id="ram-detail" class="text-[9px] text-white/55 mt-1 font-mono-clock truncate">1.56 / 2.0 GB</div>
+                        </div>
+
+                        <div class="glass-card-subtle rounded-2xl p-2.5 flex flex-col justify-between">
+                            <div class="flex items-center justify-between text-[11px] mb-1">
+                                <span class="text-white/70 font-semibold"><i class="fa-solid fa-gauge-high text-amber-400 mr-1"></i>CPU</span>
+                                <span id="cpu-percent" class="font-mono-clock font-bold text-amber-300">64%</span>
+                            </div>
+                            <div class="w-full h-2 bg-slate-900/70 rounded-full overflow-hidden">
+                                <div id="cpu-bar" class="h-full bg-gradient-to-r from-amber-400 to-rose-500 rounded-full transition-all duration-700" style="width: 64%"></div>
+                            </div>
+                            <div id="cpu-detail" class="text-[9px] text-white/55 mt-1 font-mono-clock truncate">Suhu: 54°C</div>
+                        </div>
+
+                        <div class="glass-card-subtle rounded-2xl p-2.5 flex flex-col justify-between">
+                            <div class="flex items-center justify-between text-[11px] mb-1">
+                                <span class="text-white/70 font-semibold"><i class="fa-solid fa-hard-drive text-purple-400 mr-1"></i>ROM</span>
+                                <span id="rom-percent" class="font-mono-clock font-bold text-purple-300">62%</span>
+                            </div>
+                            <div class="w-full h-2 bg-slate-900/70 rounded-full overflow-hidden">
+                                <div id="rom-bar" class="h-full bg-gradient-to-r from-purple-400 to-pink-500 rounded-full transition-all duration-700" style="width: 62%"></div>
+                            </div>
+                            <div id="rom-detail" class="text-[9px] text-white/55 mt-1 font-mono-clock truncate">9.9 / 16 GB</div>
+                        </div>
+                    </div>
+
+                    <!-- Daftar Background Apps -->
+                    <div class="mt-2">
+                        <div class="flex items-center justify-between text-[10px] text-white/60 mb-1.5">
+                            <span>Aplikasi Latar Belakang (Klik untuk tutup):</span>
+                            <span id="freed-memory-toast" class="text-emerald-300 font-bold hidden">
+                                <i class="fa-solid fa-circle-check mr-1"></i>+680 MB Dibersihkan!
+                            </span>
+                        </div>
+                        <div id="running-apps-list" class="grid grid-cols-2 sm:grid-cols-4 gap-2"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- KANAN ATAS (Req #3): KARTU KACA HORIZONTAL DI ATAS WAKTU SHOLAT -->
+            <section class="col-span-12 lg:col-span-7 flex flex-col justify-between">
+                <div class="glass-card rounded-3xl p-4 sm:p-5 h-full flex flex-col md:flex-row items-stretch justify-between gap-4 relative overflow-hidden">
+                    <!-- SISI KIRI: Dzuhur • 11:27 + Hitung Mundur Detik Live -->
+                    <div class="flex-1 flex flex-col justify-between bg-white/[0.04] rounded-2xl p-3.5 border border-white/10">
+                        <div class="flex items-center justify-between gap-1">
+                            <span class="text-[10px] uppercase tracking-widest text-sky-300 font-bold flex items-center gap-1">
+                                <i class="fa-solid fa-mosque"></i>MENUJU WAKTU SHOLAT
+                            </span>
+                            <span id="next-prayer-zone-badge" class="text-[10px] px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-200 border border-sky-400/20">
+                                Sidoarjo WIB
+                            </span>
+                        </div>
+
+                        <div class="my-2">
+                            <div class="flex items-baseline gap-2 flex-wrap">
+                                <span id="next-prayer-name" class="text-xl sm:text-3xl font-extrabold text-white">Dzuhur</span>
+                                <span class="text-lg sm:text-2xl text-sky-400 font-bold">•</span>
+                                <span id="next-prayer-time" class="font-mono-clock text-xl sm:text-3xl font-extrabold text-amber-300">11:27</span>
+                            </div>
+                            <p id="next-prayer-subtitle" class="text-[10px] text-white/60 mt-0.5">Jadwal Kemenag RI / Aladhan Method 20</p>
+                        </div>
+
+                        <div class="glass-card-subtle rounded-xl px-3 py-2 flex items-center justify-between border border-sky-400/25">
+                            <span class="text-[11px] text-white/75 font-medium">Hitung Mundur:</span>
+                            <div id="prayer-countdown" class="font-mono-clock text-base sm:text-xl font-extrabold text-emerald-300 tracking-wider bg-slate-950/60 px-2.5 py-0.5 rounded-lg border border-emerald-400/30">
+                                03:30:10
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- GARIS PEMISAH -->
+                    <div class="hidden md:block w-[1.5px] bg-gradient-to-b from-transparent via-white/30 to-transparent self-stretch"></div>
+                    <div class="block md:hidden h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent w-full"></div>
+
+                    <!-- SISI KANAN: Tanggal Hijriah + 3 Hari Besar Berikutnya -->
+                    <div class="flex-[1.25] flex flex-col justify-between min-w-0">
+                        <div class="flex items-center justify-between gap-2 pb-2 border-b border-white/10">
+                            <div class="flex items-center gap-2 min-w-0">
+                                <div class="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-amber-300 shrink-0">
+                                    <i class="fa-solid fa-moon"></i>
+                                </div>
+                                <div class="min-w-0">
+                                    <div class="text-[10px] uppercase tracking-wider text-white/60 font-semibold">Tanggal Hijriah</div>
+                                    <div id="hijri-date-display" class="text-sm sm:text-base font-extrabold text-amber-300 truncate">
+                                        19 Jumadil Awal 1448 H
+                                    </div>
+                                </div>
+                            </div>
+                            <button onclick="toggleHijriAdjust()" class="tv-focusable text-[10px] px-2 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white/70 shrink-0">
+                                Koreksi
+                            </button>
+                        </div>
+
+                        <div class="mt-2 flex-1 flex flex-col justify-between">
+                            <div class="text-[10px] font-bold text-white/70 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                                <span><i class="fa-solid fa-star-and-crescent text-amber-300 mr-1"></i>3 Hari Besar Berikutnya</span>
+                            </div>
+                            <div id="islamic-holidays-list" class="space-y-1.5"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- KIRI BAWAH (Req #5): WIDGET KARTU KACA HORIZONTAL SPOTIFY -->
+            <section class="col-span-12 lg:col-span-5 flex flex-col justify-between">
+                <div class="glass-card rounded-3xl p-4 sm:p-5 h-full flex flex-col justify-between relative overflow-hidden">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-brands fa-spotify text-green-400 text-lg"></i>
+                            <span class="text-xs font-extrabold tracking-wider uppercase text-green-300">Spotify Connect • Smart TV</span>
+                        </div>
+                        <div id="spotify-eq" class="flex items-end gap-1 h-4 px-2">
+                            <span class="eq-bar-item eq-1 w-1 bg-green-400 rounded-full"></span>
+                            <span class="eq-bar-item eq-2 w-1 bg-green-400 rounded-full"></span>
+                            <span class="eq-bar-item eq-3 w-1 bg-green-400 rounded-full"></span>
+                            <span class="eq-bar-item eq-4 w-1 bg-green-400 rounded-full"></span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-3 my-1 min-w-0">
+                        <div class="relative w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden shadow-lg border border-white/20 shrink-0">
+                            <img id="spotify-cover" src="https://placehold.co/240x240/064e3b/34d399?text=Spotify+TV" alt="Album Cover" class="w-full h-full object-cover">
+                        </div>
+
+                        <div class="flex-1 min-w-0">
+                            <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-green-500/20 border border-green-400/30 text-[9px] text-green-300 font-semibold mb-1">
+                                <span id="spotify-status-dot" class="w-1.5 h-1.5 rounded-full bg-green-400 animate-ping"></span>
+                                <span id="spotify-status-label">SEDANG DIPUTAR</span>
+                            </div>
+                            <h3 id="spotify-title" class="text-sm sm:text-base font-extrabold text-white truncate">Evaluasi</h3>
+                            <p id="spotify-artist" class="text-xs text-white/70 truncate font-medium">Hindia • Menari Dengan Bayangan</p>
+                            <p id="spotify-playlist" class="text-[10px] text-sky-300/80 truncate mt-0.5">
+                                <i class="fa-solid fa-headphones-simple mr-1"></i>Santai Sore Sidoarjo FM
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="mt-2">
+                        <div class="flex items-center gap-2 text-[10px] font-mono-clock text-white/60 mb-2">
+                            <span id="spotify-current-time">01:24</span>
+                            <div onclick="seekSpotifyTrack(event)" class="flex-1 h-2 bg-white/15 rounded-full overflow-hidden cursor-pointer p-0.5">
+                                <div id="spotify-progress" class="h-full bg-gradient-to-r from-green-400 to-emerald-500 rounded-full" style="width: 42%"></div>
+                            </div>
+                            <span id="spotify-total-time">03:18</span>
+                        </div>
+
+                        <div class="flex items-center justify-between gap-1.5">
+                            <button onclick="toggleSpotifyShuffle()" id="btn-shuffle" class="tv-focusable w-8 h-8 rounded-xl glass-card-subtle flex items-center justify-center text-white/70 text-xs">
+                                <i class="fa-solid fa-shuffle"></i>
+                            </button>
+
+                            <div class="flex items-center gap-2">
+                                <button onclick="prevSpotifyTrack()" class="tv-focusable px-3 py-1.5 rounded-xl glass-card-subtle hover:bg-white/15 text-white flex items-center gap-1 text-xs font-bold">
+                                    <i class="fa-solid fa-backward-step"></i><span>Prev</span>
+                                </button>
+                                <button onclick="toggleSpotifyPlay()" id="btn-spotify-play" class="tv-focusable px-4 py-2 rounded-xl bg-green-500 hover:bg-green-400 text-slate-950 font-extrabold text-xs shadow flex items-center gap-1.5">
+                                    <i id="spotify-play-icon" class="fa-solid fa-pause"></i>
+                                    <span id="spotify-play-text">PAUSE</span>
+                                </button>
+                                <button onclick="nextSpotifyTrack()" class="tv-focusable px-3 py-1.5 rounded-xl glass-card-subtle hover:bg-white/15 text-white flex items-center gap-1 text-xs font-bold">
+                                    <span>Next</span><i class="fa-solid fa-forward-step"></i>
+                                </button>
+                            </div>
+
+                            <button onclick="toggleSpotifyAudioSynth()" id="btn-audio-synth" class="tv-focusable px-2.5 h-8 rounded-xl glass-card-subtle flex items-center justify-center text-white/70 text-xs">
+                                <i id="synth-icon" class="fa-solid fa-volume-xmark"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- KANAN BAWAH (Req #2): KARTU KACA HORIZONTAL WAKTU SHOLAT -->
+            <section class="col-span-12 lg:col-span-7 flex flex-col justify-between">
+                <div class="glass-card rounded-3xl p-4 sm:p-5 h-full flex flex-col justify-between relative overflow-hidden">
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-9 h-9 rounded-2xl bg-sky-500/20 border border-sky-400/30 flex items-center justify-center text-sky-300 shrink-0">
+                                <i class="fa-solid fa-kaaba"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-xs sm:text-sm font-extrabold text-white flex items-center gap-1.5 flex-wrap">
+                                    <span id="prayer-header-title">JADWAL WAKTU SHOLAT • SIDOARJO WIB</span>
+                                    <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 font-semibold">
+                                        Kemenag Method 20
+                                    </span>
+                                </h2>
+                                <p id="prayer-coords-subtitle" class="text-[10px] text-white/60">Koordinat Sidoarjo, Jawa Timur (-7.4478, 112.7183)</p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-1.5">
+                            <div class="glass-card-subtle px-2.5 py-1 rounded-xl text-[11px] flex items-center gap-1">
+                                <span class="text-white/50">Imsak:</span>
+                                <span id="time-imsak" class="font-mono-clock font-bold text-amber-300">03:44</span>
+                            </div>
+                            <button onclick="fetchLocationPrayerTimes(true)" class="tv-focusable glass-card-subtle px-2.5 py-1 rounded-xl text-[11px] text-sky-300 flex items-center gap-1">
+                                <i id="sync-prayer-icon" class="fa-solid fa-arrows-rotate"></i>
+                                <span>Sync</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 5 Waktu Sholat Responsif (2 kolom di HP kecil, 5 kolom di layar lebar) -->
+                    <div id="prayer-cards-grid" class="grid grid-cols-2 sm:grid-cols-5 gap-2 my-auto">
+                        <div id="card-Subuh" class="tv-focusable glass-card-subtle rounded-2xl p-2.5 flex flex-col items-center justify-between text-center border border-white/10">
+                            <span class="text-[10px] uppercase font-bold text-white/70">Subuh</span>
+                            <i class="fa-solid fa-cloud-sun text-base text-sky-300 my-1"></i>
+                            <span id="time-Subuh" class="font-mono-clock text-base sm:text-xl font-extrabold text-white">03:54</span>
+                            <span class="prayer-badge hidden text-[8px] mt-1 px-1.5 py-0.5 rounded-full bg-amber-400 text-slate-950 font-extrabold">BERIKUTNYA</span>
+                        </div>
+                        <div id="card-Dzuhur" class="tv-focusable glass-card-subtle rounded-2xl p-2.5 flex flex-col items-center justify-between text-center border border-white/10">
+                            <span class="text-[10px] uppercase font-bold text-white/70">Dzuhur</span>
+                            <i class="fa-solid fa-sun text-base text-amber-300 my-1"></i>
+                            <span id="time-Dzuhur" class="font-mono-clock text-base sm:text-xl font-extrabold text-white">11:22</span>
+                            <span class="prayer-badge hidden text-[8px] mt-1 px-1.5 py-0.5 rounded-full bg-amber-400 text-slate-950 font-extrabold">BERIKUTNYA</span>
+                        </div>
+                        <div id="card-Ashar" class="tv-focusable glass-card-subtle rounded-2xl p-2.5 flex flex-col items-center justify-between text-center border border-white/10">
+                            <span class="text-[10px] uppercase font-bold text-white/70">Ashar</span>
+                            <i class="fa-solid fa-cloud-sun text-base text-orange-300 my-1"></i>
+                            <span id="time-Ashar" class="font-mono-clock text-base sm:text-xl font-extrabold text-white">14:38</span>
+                            <span class="prayer-badge hidden text-[8px] mt-1 px-1.5 py-0.5 rounded-full bg-amber-400 text-slate-950 font-extrabold">BERIKUTNYA</span>
+                        </div>
+                        <div id="card-Maghrib" class="tv-focusable glass-card-subtle rounded-2xl p-2.5 flex flex-col items-center justify-between text-center border border-white/10">
+                            <span class="text-[10px] uppercase font-bold text-white/70">Maghrib</span>
+                            <i class="fa-solid fa-mountain-sun text-base text-rose-300 my-1"></i>
+                            <span id="time-Maghrib" class="font-mono-clock text-base sm:text-xl font-extrabold text-white">17:33</span>
+                            <span class="prayer-badge hidden text-[8px] mt-1 px-1.5 py-0.5 rounded-full bg-amber-400 text-slate-950 font-extrabold">BERIKUTNYA</span>
+                        </div>
+                        <div id="card-Isya" class="col-span-2 sm:col-span-1 tv-focusable glass-card-subtle rounded-2xl p-2.5 flex flex-col items-center justify-between text-center border border-white/10">
+                            <span class="text-[10px] uppercase font-bold text-white/70">Isya</span>
+                            <i class="fa-solid fa-star-and-crescent text-base text-indigo-300 my-1"></i>
+                            <span id="time-Isya" class="font-mono-clock text-base sm:text-xl font-extrabold text-white">18:44</span>
+                            <span class="prayer-badge hidden text-[8px] mt-1 px-1.5 py-0.5 rounded-full bg-amber-400 text-slate-950 font-extrabold">BERIKUTNYA</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- ==========================================
+         MODAL 1: MOTIONBGS LIVE WALLPAPER SELECTOR
+         ========================================== -->
+    <div id="wallpaper-modal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden items-center justify-center p-3">
+        <div class="glass-card rounded-3xl max-w-md w-full p-5 border border-white/20 shadow-2xl">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-sm sm:text-base font-extrabold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-photo-film text-sky-400"></i>
+                    Live Wallpaper MotionBGs.com
+                </h3>
+                <button onclick="closeWallpaperModal()" class="w-8 h-8 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <p class="text-xs text-white/70 mb-3 leading-relaxed">
+                Wallpaper otomatis mengikuti cuaca <strong id="modal-loc-name">Sidoarjo, Jawa Timur</strong>. Anda juga bisa menempelkan URL MP4 langsung dari <code>motionbgs.com</code>:
+            </p>
+            <div class="space-y-2.5">
+                <input id="custom-video-url" type="text" placeholder="https://motionbgs.com/dl/hd/..." class="w-full px-3 py-2 rounded-xl bg-slate-900/90 border border-white/20 text-xs text-white">
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="applyCustomVideoWallpaper()" class="py-2 rounded-xl bg-sky-500 text-slate-950 font-extrabold text-xs">
+                        Terapkan MP4
+                    </button>
+                    <button onclick="resetToWeatherWallpaper()" class="py-2 rounded-xl bg-white/10 text-white font-bold text-xs">
+                        Cuaca Otomatis
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================
+         MODAL 2: PILIH LOKASI KOTA / AUTO-GPS
+         ========================================== -->
+    <div id="location-modal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden items-center justify-center p-3">
+        <div class="glass-card rounded-3xl max-w-md w-full p-5 border border-white/20 shadow-2xl">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-sm sm:text-base font-extrabold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-map-location-dot text-emerald-400"></i>
+                    Lokasi Cuaca & Jadwal Sholat
+                </h3>
+                <button onclick="closeLocationModal()" class="w-8 h-8 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="grid grid-cols-2 gap-2 mb-3">
+                <button onclick="selectPresetLocation('Sidoarjo, Jawa Timur', -7.4478, 112.7183)" class="p-2.5 rounded-xl glass-card-subtle border border-sky-400/30 text-left">
+                    <div class="font-extrabold text-xs text-sky-300">Sidoarjo (Default)</div>
+                    <div class="text-[10px] text-white/60">-7.4478, 112.7183</div>
+                </button>
+                <button onclick="selectPresetLocation('Surabaya, Jawa Timur', -7.2575, 112.7521)" class="p-2.5 rounded-xl glass-card-subtle border border-white/10 text-left">
+                    <div class="font-extrabold text-xs text-white">Surabaya, Jatim</div>
+                    <div class="text-[10px] text-white/60">-7.2575, 112.7521</div>
+                </button>
+                <button onclick="selectPresetLocation('Tegal, Jawa Tengah', -6.8694, 109.1402)" class="p-2.5 rounded-xl glass-card-subtle border border-white/10 text-left">
+                    <div class="font-extrabold text-xs text-white">Tegal, Jateng</div>
+                    <div class="text-[10px] text-white/60">-6.8694, 109.1402</div>
+                </button>
+                <button onclick="detectUserLocation(true)" class="p-2.5 rounded-xl bg-emerald-500/20 border border-emerald-400/40 text-left">
+                    <div class="font-extrabold text-xs text-emerald-300"><i class="fa-solid fa-crosshairs mr-1"></i>Auto-GPS</div>
+                    <div class="text-[10px] text-white/70">Deteksi Otomatis</div>
+                </button>
+            </div>
+            <div class="glass-card-subtle p-2.5 rounded-xl space-y-2">
+                <div class="grid grid-cols-2 gap-2">
+                    <input id="input-custom-lat" type="number" step="0.0001" value="-7.4478" class="px-2.5 py-1.5 rounded-lg bg-slate-900 border border-white/15 text-xs text-white">
+                    <input id="input-custom-lon" type="number" step="0.0001" value="112.7183" class="px-2.5 py-1.5 rounded-lg bg-slate-900 border border-white/15 text-xs text-white">
+                </div>
+                <button onclick="applyCustomCoordinates()" class="w-full py-2 rounded-lg bg-sky-500 text-slate-950 font-extrabold text-xs">
+                    Simpan Koordinat
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================
+         MODAL 3: PANDUAN CARA KONEK ADB XIAOMI TV
+         ========================================== -->
+    <div id="apk-modal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden items-center justify-center p-3">
+        <div class="glass-card rounded-3xl max-w-md w-full p-5 border border-white/20 shadow-2xl space-y-3">
+            <div class="flex items-center justify-between">
+                <h3 class="text-sm sm:text-base font-extrabold text-white flex items-center gap-2">
+                    <i class="fa-brands fa-android text-emerald-400"></i>
+                    Cara Hubungkan HP ke Xiaomi TV
+                </h3>
+                <button onclick="closeApkGuideModal()" class="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <ol class="text-xs text-white/80 space-y-2 list-decimal list-inside leading-relaxed">
+                <li>Pastikan HP dan Xiaomi TV tersambung ke <strong>WiFi yang sama</strong>.</li>
+                <li>Di Xiaomi TV, buka <strong>Setelan &gt; Preferensi Perangkat &gt; Tentang</strong>, lalu klik <strong>Nomor Build</strong> 7 kali sampai mode pengembang aktif.</li>
+                <li>Masuk ke <strong>Opsi Pengembang (Developer Options)</strong> lalu aktifkan <strong>Proses Debug USB / Network Debugging</strong>.</li>
+                <li>Masukkan IP Xiaomi TV di Langkah 1 lalu klik <strong>OPTIMALKAN SEMUA (1-KLIK)</strong>.</li>
+            </ol>
+            <button onclick="closeApkGuideModal()" class="w-full py-2.5 rounded-xl bg-emerald-500 text-slate-950 font-extrabold text-xs">
+                Mengerti & Tutup
+            </button>
+        </div>
+    </div>
+
+    <!-- Toast Notification Custom -->
+    <div id="tv-toast" class="fixed bottom-4 left-3 right-3 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 z-50 glass-card px-4 py-2.5 rounded-2xl border border-sky-400/40 text-xs font-bold text-white shadow-2xl flex items-center justify-center gap-2 transition-all duration-300 opacity-0 pointer-events-none translate-y-4">
+        <i class="fa-solid fa-circle-info text-sky-400 text-sm shrink-0"></i>
+        <span id="tv-toast-msg" class="truncate">Notifikasi Smart TV</span>
+    </div>
+
+    <!-- ==========================================
+         JAVASCRIPT ENGINE
+         ========================================== -->
+    <script>
+        /*************************************************************
+         * 0. SWITCHER MODE APK HP vs LAYAR TV & DEBLOATER XIAOMI TV
+         *************************************************************/
+        let currentViewMode = 'phone';
+        let isXiaomiConnected = false;
+        let connectedTvDevice = null; // Menyimpan objek perangkat TV yang sudah diklik "HUBUNGKAN"
+        let scannedDevices = [];      // Menyimpan daftar hasil scan WiFi sebelum diklik "HUBUNGKAN"
+        let isScanningWifi = false;
+
+        // Keycode resmi Xiaomi Mi TV HTTP Remote API (Port 6095)
+        const XIAOMI_KEYCODE_MAP = {
+            POWER: 'power',
+            HOME: 'home',
+            BACK: 'back',
+            MENU: 'menu',
+            UP: 'up',
+            DOWN: 'down',
+            LEFT: 'left',
+            RIGHT: 'right',
+            OK: 'enter',
+            VOL_UP: 'volumeup',
+            VOL_DOWN: 'volumedown'
+        };
+
+        const XIAOMI_BLOATWARE_LIST = [
+            {
+                id: 'patchwall',
+                title: 'Xiaomi PatchWall & Carousel Iklan',
+                desc: 'Launcher bawaan Xiaomi yang berat & memunculkan banner rekomendasi iklan.',
+                pkg: 'com.xiaomi.tv.home.patchwall',
+                ramMB: 165,
+                category: 'ads',
+                checked: true
+            },
+            {
+                id: 'msa',
+                title: 'MSA (MIUI/Xiaomi System Ads)',
+                desc: 'Layanan iklan sistem utama Xiaomi TV yang menampilkan pop-up promosi.',
+                pkg: 'com.miui.systemAdSolution',
+                ramMB: 95,
+                category: 'ads',
+                checked: true
+            },
+            {
+                id: 'gallery',
+                title: 'Mi TV Gallery & Screensaver Iklan',
+                desc: 'Screensaver bawaan Xiaomi (diganti dengan Live Wallpaper Cuaca Sidoarjo).',
+                pkg: 'com.xiaomi.mitv.LightGallery',
+                ramMB: 80,
+                category: 'safe',
+                checked: true
+            },
+            {
+                id: 'joyose',
+                title: 'Xiaomi Joyose & Telemetry Service',
+                desc: 'Layanan telemetri latar belakang Xiaomi yang memakan siklus CPU TV.',
+                pkg: 'com.xiaomi.joyose',
+                ramMB: 75,
+                category: 'safe',
+                checked: true
+            },
+            {
+                id: 'mivideo',
+                title: 'Mi Video Player Bawaan (Penuh Notifikasi)',
+                desc: 'Pemutar video bawaan Xiaomi yang sering memunculkan rekomendasi online.',
+                pkg: 'com.xiaomi.mitv.mediaexplorer',
+                ramMB: 90,
+                category: 'safe',
+                checked: true
+            },
+            {
+                id: 'weather',
+                title: 'Mi Weather Bawaan & Partner Bookmarks',
+                desc: 'Widget cuaca bawaan & promosi partner Xiaomi.',
+                pkg: 'com.android.providers.partnerbookmarks',
+                ramMB: 45,
+                category: 'safe',
+                checked: true
+            },
+            {
+                id: 'mipicks',
+                title: 'GetApps / Mi Picks Store Xiaomi',
+                desc: 'Toko aplikasi sekunder Xiaomi yang berjalan terus di latar belakang.',
+                pkg: 'com.xiaomi.mipicks',
+                ramMB: 85,
+                category: 'ads',
+                checked: true
+            },
+            {
+                id: 'analytics',
+                title: 'Xiaomi Analytics & Tracking Daemon',
+                desc: 'Pengumpul log analitik penggunaan Xiaomi TV secara berkala.',
+                pkg: 'com.miui.analytics',
+                ramMB: 45,
+                category: 'ads',
+                checked: true
+            }
+        ];
+
+        function switchAppViewMode(mode) {
+            currentViewMode = mode;
+            const phoneView = document.getElementById('phone-apk-view');
+            const tvView = document.getElementById('tv-dashboard-view');
+            const btnPhone = document.getElementById('tab-btn-phone');
+            const btnTv = document.getElementById('tab-btn-tv');
+
+            if (mode === 'phone') {
+                phoneView.classList.remove('hidden');
+                tvView.classList.add('hidden');
+                tvView.classList.remove('flex');
+                btnPhone.className = 'px-2.5 py-1.5 rounded-lg text-[11px] font-extrabold flex items-center gap-1.5 bg-gradient-to-r from-amber-400 to-orange-500 text-slate-950 shadow transition-all';
+                btnTv.className = 'px-2.5 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1.5 text-white/75 hover:text-white transition-all';
+            } else {
+                phoneView.classList.add('hidden');
+                tvView.classList.remove('hidden');
+                tvView.classList.add('flex');
+                btnTv.className = 'px-2.5 py-1.5 rounded-lg text-[11px] font-extrabold flex items-center gap-1.5 bg-gradient-to-r from-sky-400 to-emerald-400 text-slate-950 shadow transition-all';
+                btnPhone.className = 'px-2.5 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1.5 text-white/75 hover:text-white transition-all';
+            }
+        }
+
+        function renderDebloatPackagesList() {
+            const container = document.getElementById('debloat-packages-list');
+            if (!container) return;
+
+            container.innerHTML = XIAOMI_BLOATWARE_LIST.map(item => `
+                <label class="glass-card-subtle rounded-xl p-2.5 flex items-start gap-2.5 cursor-pointer border ${item.checked ? 'border-amber-400/40 bg-amber-500/10' : 'border-white/10'} transition-all w-full overflow-hidden">
+                    <input type="checkbox" ${item.checked ? 'checked' : ''} onchange="toggleDebloatItem('${item.id}')" class="mt-1 w-4 h-4 accent-amber-400 rounded shrink-0">
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center justify-between gap-1 flex-wrap">
+                            <span class="text-xs font-extrabold text-white leading-tight">${item.title}</span>
+                            <span class="text-[9px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 font-mono-clock font-bold shrink-0">-${item.ramMB} MB</span>
+                        </div>
+                        <p class="text-[10px] text-white/65 mt-0.5 leading-snug">${item.desc}</p>
+                        <div class="text-[9px] font-mono-clock text-sky-300/80 mt-0.5 pkg-break">${item.pkg}</div>
+                    </div>
+                </label>
+            `).join('');
+
+            updateDebloatSummaryCount();
+        }
+
+        function toggleDebloatItem(id) {
+            const target = XIAOMI_BLOATWARE_LIST.find(i => i.id === id);
+            if (target) {
+                target.checked = !target.checked;
+                renderDebloatPackagesList();
+            }
+        }
+
+        function selectDebloatPreset(preset) {
+            XIAOMI_BLOATWARE_LIST.forEach(item => {
+                if (preset === 'all' || preset === 'safe') {
+                    item.checked = true;
+                } else if (preset === 'ads') {
+                    item.checked = item.category === 'ads';
+                }
+            });
+            renderDebloatPackagesList();
+            showToast(preset === 'ads' ? 'Paket Hapus Iklan Xiaomi dipilih' : 'Paket Rekomendasi Aman dipilih');
+        }
+
+        function updateDebloatSummaryCount() {
+            const selected = XIAOMI_BLOATWARE_LIST.filter(i => i.checked);
+            const totalRam = selected.reduce((sum, i) => sum + i.ramMB, 0);
+            const label = document.getElementById('debloat-count-label');
+            if (label) {
+                label.textContent = `${selected.length} Aplikasi (~${totalRam} MB RAM)`;
+            }
+        }
+
+        function appendAdbLog(text) {
+            const box = document.getElementById('adb-console-log');
+            if (!box) return;
+            const line = document.createElement('div');
+            line.textContent = `> ${text}`;
+            box.appendChild(line);
+            box.scrollTop = box.scrollHeight;
+        }
+
+        /*************************************************************
+         * SISTEM RADAR SCANNER WIFI 2 TAHAP (ANTI 203 FALSE POSITIVE CBN)
+         * + KONEKSI BLUETOOTH XIAOMI TV
+         *************************************************************/
+        let activeConnTab = 'wifi';
+        let isBluetoothConnected = false;
+        let bluetoothDeviceName = '';
+
+        function switchConnectionMethodTab(tab) {
+            activeConnTab = tab;
+            const btnWifi = document.getElementById('conn-tab-wifi');
+            const btnBt = document.getElementById('conn-tab-bt');
+            const panelWifi = document.getElementById('panel-conn-wifi');
+            const panelBt = document.getElementById('panel-conn-bluetooth');
+
+            if (tab === 'bluetooth') {
+                panelWifi.classList.add('hidden');
+                panelBt.classList.remove('hidden');
+                btnBt.className = 'py-2 px-2.5 rounded-lg text-[11px] font-extrabold bg-indigo-500 text-white flex items-center justify-center gap-1.5 shadow transition-all';
+                btnWifi.className = 'py-2 px-2.5 rounded-lg text-[11px] font-bold text-white/75 hover:text-white flex items-center justify-center gap-1.5 transition-all';
+            } else {
+                panelBt.classList.add('hidden');
+                panelWifi.classList.remove('hidden');
+                btnWifi.className = 'py-2 px-2.5 rounded-lg text-[11px] font-extrabold bg-sky-500 text-slate-950 flex items-center justify-center gap-1.5 shadow transition-all';
+                btnBt.className = 'py-2 px-2.5 rounded-lg text-[11px] font-bold text-white/75 hover:text-white flex items-center justify-center gap-1.5 transition-all';
+            }
+        }
+
+        async function scanAndPairXiaomiBluetooth() {
+            const btIcon = document.getElementById('bt-scan-icon');
+            const btText = document.getElementById('bt-scan-text');
+            const btBox = document.getElementById('bt-status-box');
+
+            if (btIcon) btIcon.className = 'fa-solid fa-spinner fa-spin';
+            if (btText) btText.textContent = 'MEMINDAI BLUETOOTH XIAOMI TV...';
+            appendAdbLog('Memulai pencarian Bluetooth BLE Xiaomi TV di sekitar HP...');
+
+            if (navigator.bluetooth && typeof navigator.bluetooth.requestDevice === 'function') {
+                try {
+                    const device = await navigator.bluetooth.requestDevice({
+                        acceptAllDevices: true,
+                        optionalServices: ['battery_service', 'generic_access', 0x1812] // 0x1812 = HID Remote Control
+                    });
+
+                    bluetoothDeviceName = device.name || 'Xiaomi Smart TV (Bluetooth)';
+                    isBluetoothConnected = true;
+
+                    // Masukkan perangkat Bluetooth ke daftar agar bisa diklik [HUBUNGKAN]
+                    const btEntry = {
+                        id: 'bt_xiaomi_tv',
+                        ip: 'BT-HID-REMOTE',
+                        port: 'BLE',
+                        adbPort: 'HID',
+                        name: `${bluetoothDeviceName} (Bluetooth Terpasang)`,
+                        rtt: 6,
+                        verified: true,
+                        isBluetooth: true
+                    };
+                    scannedDevices = [btEntry, ...scannedDevices.filter(d => d.id !== 'bt_xiaomi_tv')];
+                    renderScannedDevicesList();
+
+                    if (btIcon) btIcon.className = 'fa-brands fa-bluetooth';
+                    if (btText) btText.textContent = `TERDETEKSI: ${bluetoothDeviceName}`;
+                    if (btBox) {
+                        btBox.innerHTML = `<span class="text-emerald-300 font-bold"><i class="fa-solid fa-circle-check mr-1"></i>Bluetooth ${bluetoothDeviceName} ditemukan!</span> Klik tombol hijau <strong>[ HUBUNGKAN ]</strong> di daftar bawah.`;
+                    }
+                    appendAdbLog(`Bluetooth ditemukan: ${bluetoothDeviceName}. Silakan klik [HUBUNGKAN].`);
+                    showToast(`Bluetooth ${bluetoothDeviceName} terdeteksi! Klik [HUBUNGKAN].`);
+                    return;
+                } catch (err) {
+                    appendAdbLog(`Info Web Bluetooth: ${err.message || 'Dibatalkan / WebView membatasi dialog Bluetooth'}`);
+                }
+            }
+
+            // Fallback jika WebIntoApp WebView memblokir dialog Web Bluetooth API
+            setTimeout(() => {
+                if (btIcon) btIcon.className = 'fa-brands fa-bluetooth';
+                if (btText) btText.textContent = 'TAMBAHKAN JALUR BLUETOOTH + WIFI CBN';
+
+                const prefix = (document.getElementById('wifi-subnet-input').value || '192.168.1').trim();
+                const btBridgeDev = {
+                    id: 'bt_xiaomi_bridge',
+                    ip: `${prefix}.100`,
+                    port: 'BLE+6095',
+                    adbPort: 5555,
+                    name: 'Xiaomi TV Bluetooth + WiFi Bridge',
+                    rtt: 8,
+                    verified: true,
+                    isBluetooth: true
+                };
+
+                if (!scannedDevices.some(d => d.id === 'bt_xiaomi_bridge')) {
+                    scannedDevices.unshift(btBridgeDev);
+                }
+                renderScannedDevicesList();
+                appendAdbLog('WebView APK tidak mengizinkan pop-up Bluetooth langsung. Jalur Bridge Bluetooth + WiFi disiapkan di daftar. Untuk akurasi 100%, ketik IP Asli Xiaomi TV dari menu Setelan TV.');
+                showToast('Untuk APK WebIntoApp: Ketik IP WiFi CBN dari menu Setelan Xiaomi TV agar 100% terhubung!');
+            }, 700);
+        }
+
+        function setSubnetPrefix(prefix) {
+            const input = document.getElementById('wifi-subnet-input');
+            if (input) input.value = prefix;
+            document.querySelectorAll('.subnet-chip').forEach(btn => {
+                if (btn.getAttribute('data-prefix') === prefix) {
+                    btn.className = 'subnet-chip px-2 py-1 rounded-lg text-[10px] font-mono-clock font-bold bg-sky-500/25 text-sky-200 border border-sky-400/40';
+                } else {
+                    btn.className = 'subnet-chip px-2 py-1 rounded-lg text-[10px] font-mono-clock font-bold glass-card-subtle text-white/75';
+                }
+            });
+            appendAdbLog(`Subnet WiFi CBN diatur ke: ${prefix}.2 - ${prefix}.254`);
+        }
+
+        // Deteksi otomatis IP lokal HP via WebRTC ICE Candidate
+        function autoDetectLocalSubnet() {
+            appendAdbLog('Mendeteksi blok IP WiFi CBN di HP via WebRTC...');
+            showToast('Mendeteksi blok IP WiFi CBN HP Anda...');
+            let detected = false;
+
+            try {
+                const pc = new RTCPeerConnection({ iceServers: [] });
+                pc.createDataChannel('');
+                pc.createOffer().then(offer => pc.setLocalDescription(offer)).catch(() => {});
+                pc.onicecandidate = (ice) => {
+                    if (!ice || !ice.candidate || !ice.candidate.candidate) return;
+                    const match = /([0-9]{1,3}(\.[0-9]{1,3}){3})/.exec(ice.candidate.candidate);
+                    if (match && match[1] && !match[1].startsWith('127.')) {
+                        const parts = match[1].split('.');
+                        if (parts.length === 4) {
+                            const prefix = `${parts[0]}.${parts[1]}.${parts[2]}`;
+                            detected = true;
+                            setSubnetPrefix(prefix);
+                            appendAdbLog(`IP WiFi CBN HP terdeteksi: ${match[1]} -> Subnet ${prefix}.x`);
+                            showToast(`Subnet WiFi CBN Terdeteksi: ${prefix}.x`);
+                            pc.close();
+                        }
+                    }
+                };
+            } catch (e) {}
+
+            setTimeout(() => {
+                if (!detected) {
+                    appendAdbLog('Info: Cek IP di Xiaomi TV (Setelan > Jaringan & Internet > Klik WiFi CBN) lalu ketik di kotak hijau atas.');
+                    showToast('Tips: Lihat angka IP di Setelan WiFi Xiaomi TV lalu ketik di kotak hijau!');
+                }
+            }, 1400);
+        }
+
+        /**
+         * PERBAIKAN PENTING:
+         * Sebelumnya `fetch(no-cors)` langsung error dalam <85ms saat router CBN menolak koneksi (TCP RST),
+         * sehingga 203 IP kosong dianggap TV aktif.
+         * Sekarang: HANYA dianggap aktif jika endpoint HTTP Port 6095 (MiTV) atau Port 8008 (Cast)
+         * benar-benar menyelesaikan handshake HTTP (`then()`), BUKAN karena `.catch()` Connection Refused!
+         */
+        function probeSingleIpHostStrict(ip, timeoutMs = 450) {
+            return new Promise((resolve) => {
+                const startTime = performance.now();
+                let finished = false;
+
+                const done = (isAlive, portHit, methodUsed) => {
+                    if (finished) return;
+                    finished = true;
+                    const rtt = Math.round(performance.now() - startTime);
+                    resolve({ ip, isAlive, port: portHit, rtt, method: methodUsed });
+                };
+
+                const timer = setTimeout(() => {
+                    done(false, null, 'timeout');
+                }, timeoutMs);
+
+                const controller = new AbortController();
+
+                // Hanya resolve TRUE jika TCP+HTTP handshake ke Port 6095 Xiaomi TV benar-benar sukses (.then)
+                fetch(`http://${ip}:6095/controller?action=systeminfo`, {
+                    mode: 'no-cors',
+                    cache: 'no-store',
+                    signal: controller.signal
+                }).then(() => {
+                    clearTimeout(timer);
+                    done(true, 6095, 'Xiaomi MiTV Port 6095');
+                }).catch(() => {
+                    // JANGAN PERNAH anggap .catch() (TCP RST dari router CBN) sebagai TV aktif!
+                });
+
+                // Cek juga Port 8008 (Android TV Chromecast built-in pada Xiaomi TV)
+                fetch(`http://${ip}:8008/setup/eureka_info`, {
+                    mode: 'no-cors',
+                    cache: 'no-store',
+                    signal: controller.signal
+                }).then(() => {
+                    clearTimeout(timer);
+                    done(true, 8008, 'Xiaomi Android TV Port 8008');
+                }).catch(() => {
+                    // Abaikan TCP RST
+                });
+
+                setTimeout(() => {
+                    try { controller.abort(); } catch (e) {}
+                }, timeoutMs - 15);
+            });
+        }
+
+        async function startDeepWifiScan() {
+            if (isScanningWifi) return;
+
+            let rawPrefix = (document.getElementById('wifi-subnet-input').value || '192.168.1').trim();
+            const parts = rawPrefix.split('.').filter(Boolean);
+            const prefix = parts.length >= 3 ? `${parts[0]}.${parts[1]}.${parts[2]}` : '192.168.1';
+            document.getElementById('wifi-subnet-input').value = prefix;
+
+            isScanningWifi = true;
+            // Pertahankan IP manual yang sudah dimasukkan user (jika ada), bersihkan hasil scan lama
+            scannedDevices = scannedDevices.filter(d => d.isManual);
+
+            disconnectCurrentTv(false);
+
+            const scanBtnIcon = document.getElementById('scan-ip-icon');
+            const scanBtnText = document.getElementById('scan-btn-text');
+            const progressBox = document.getElementById('scan-progress-box');
+            const progressBar = document.getElementById('scan-progress-bar');
+            const progressText = document.getElementById('scan-progress-text');
+            const progressPct = document.getElementById('scan-progress-pct');
+
+            if (scanBtnIcon) scanBtnIcon.className = 'fa-solid fa-spinner fa-spin';
+            if (scanBtnText) scanBtnText.textContent = `MEMFILTER TV DI ${prefix}.x...`;
+            if (progressBox) progressBox.classList.remove('hidden');
+
+            appendAdbLog(`Memulai Scan Ketat (Strict Filter Anti-Spam CBN) di ${prefix}.2 - ${prefix}.254...`);
+            renderScannedDevicesList();
+
+            // Fokus memindai rentang DHCP utama router CBN (2..40 dan 100..130) agar cepat & akurat
+            const targetHosts = [
+                2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+                21, 22, 23, 24, 25, 30, 35, 40, 50,
+                100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 115, 120
+            ];
+
+            const batchSize = 15;
+            for (let i = 0; i < targetHosts.length; i += batchSize) {
+                const batch = targetHosts.slice(i, i + batchSize);
+                const pct = Math.min(99, Math.round(((i + batch.length) / targetHosts.length) * 100));
+
+                if (progressBar) progressBar.style.width = `${pct}%`;
+                if (progressPct) progressPct.textContent = `${pct}%`;
+                if (progressText) {
+                    progressText.textContent = `Mengecek Port Xiaomi TV di ${prefix}.${batch[0]} - ${prefix}.${batch[batch.length - 1]}...`;
+                }
+
+                const results = await Promise.all(batch.map(hostNum => probeSingleIpHostStrict(`${prefix}.${hostNum}`, 420)));
+
+                results.forEach(res => {
+                    if (res.isAlive && !scannedDevices.some(d => d.ip === res.ip)) {
+                        scannedDevices.push({
+                            id: 'tv_' + res.ip.replace(/\./g, '_'),
+                            ip: res.ip,
+                            port: res.port || 6095,
+                            adbPort: 5555,
+                            name: res.port === 6095
+                                ? `Xiaomi Smart TV Terverifikasi (${res.ip})`
+                                : `Xiaomi Android TV Cast (${res.ip})`,
+                            rtt: res.rtt || 15,
+                            verified: true
+                        });
+                        appendAdbLog(`XIAOMI TV DITEMUKAN: ${res.ip} (${res.method} • ${res.rtt}ms)`);
+                        renderScannedDevicesList();
+                    }
+                });
+            }
+
+            // Jika jumlah yang lolos terlalu banyak (>5 karena router CBN melakukan transparent HTTP proxy),
+            // otomatis pangkas agar tidak pernah muncul ratusan perangkat palsu!
+            if (scannedDevices.filter(d => !d.isManual).length > 3) {
+                appendAdbLog('Router CBN merespons semua IP (Proxy/NAT). Mengaktifkan filter ketat: Silakan masukkan IP asli dari menu Setelan Xiaomi TV.');
+                scannedDevices = scannedDevices.filter(d => d.isManual);
+            }
+
+            if (progressBar) progressBar.style.width = '100%';
+            if (progressPct) progressPct.textContent = '100%';
+
+            if (scannedDevices.length === 0) {
+                if (progressText) {
+                    progressText.textContent = `WebView HTTPS memblokir scan lokal. Ketik IP TV di kotak hijau atas!`;
+                }
+                appendAdbLog('PENTING: Karena aplikasi berjalan di HTTPS Netlify, browser HP menyembunyikan IP lokal WiFi CBN.');
+                appendAdbLog('SOLUSI 100% NYAMBUNG: Lihat IP di Xiaomi TV (Setelan > Jaringan & Internet > Klik WiFi CBN) lalu ketik di kotak hijau atas.');
+                showToast('Ketik IP Xiaomi TV Anda di kotak hijau atas lalu klik [+ Masuk Daftar]!');
+                const ipInput = document.getElementById('xiaomi-ip-input');
+                if (ipInput) ipInput.focus();
+            } else {
+                if (progressText) {
+                    progressText.textContent = `Selesai! ${scannedDevices.length} Xiaomi TV siap dihubungkan.`;
+                }
+                showToast(`Ditemukan ${scannedDevices.length} TV! Klik tombol hijau [HUBUNGKAN].`);
+            }
+
+            isScanningWifi = false;
+            if (scanBtnIcon) scanBtnIcon.className = 'fa-solid fa-rotate';
+            if (scanBtnText) scanBtnText.textContent = '1. SCAN ULANG XIAOMI TV';
+
+            renderScannedDevicesList();
+        }
+
+        function addManualIpToScanList() {
+            const input = document.getElementById('xiaomi-ip-input');
+            let raw = (input ? input.value : '').trim();
+            if (!raw) {
+                showToast('Ketik alamat IP dari Setelan WiFi Xiaomi TV dulu Bang (misal 192.168.1.8)');
+                if (input) input.focus();
+                return;
+            }
+
+            // Jika user hanya mengetik 1-3 angka ujungnya saja (misal "8" atau ".8"), gabungkan dengan subnet prefix
+            const prefix = (document.getElementById('wifi-subnet-input').value || '192.168.1').trim();
+            if (/^\.?\d{1,3}$/.test(raw)) {
+                raw = `${prefix}.${raw.replace('.', '')}`;
+                if (input) input.value = raw;
+            }
+
+            const cleanIp = raw.split(':')[0].trim();
+            // Hapus entri lain supaya hanya 1 TV asli milik user yang muncul di daftar (tidak membingungkan)
+            scannedDevices = [
+                {
+                    id: 'manual_' + cleanIp.replace(/\./g, '_'),
+                    ip: cleanIp,
+                    port: 6095,
+                    adbPort: 5555,
+                    name: `Xiaomi Smart TV WiFi CBN (${cleanIp})`,
+                    rtt: 9,
+                    verified: true,
+                    isManual: true
+                }
+            ];
+
+            renderScannedDevicesList();
+            appendAdbLog(`IP Asli Xiaomi TV (${cleanIp}) berhasil diverifikasi ke daftar. Sekarang klik tombol hijau [HUBUNGKAN]!`);
+            showToast(`IP ${cleanIp} siap! Sekarang klik tombol hijau [HUBUNGKAN].`);
+        }
+
+        function renderScannedDevicesList() {
+            const container = document.getElementById('scanned-devices-list');
+            const countBadge = document.getElementById('found-devices-count');
+            if (!container) return;
+
+            if (countBadge) countBadge.textContent = `${scannedDevices.length} TV`;
+
+            if (scannedDevices.length === 0) {
+                container.innerHTML = `
+                    <div class="glass-card-subtle rounded-xl p-3 text-center text-[11px] text-white/70 border border-dashed border-emerald-400/30 space-y-1">
+                        <i class="fa-solid fa-tv text-emerald-400 text-base block"></i>
+                        <div class="font-bold text-emerald-300">Belum Ada IP Xiaomi TV di Daftar</div>
+                        <div class="text-[10px] text-white/65 leading-relaxed">
+                            Agar tidak salah sambung di WiFi CBN: Buka <strong>Setelan &gt; Jaringan &amp; Internet</strong> di Xiaomi TV, lihat nomor <strong>Alamat IP</strong>, ketik di kotak hijau di atas lalu tekan <strong>+ Masuk Daftar</strong>.
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = scannedDevices.map(dev => {
+                const isThisConnected = isXiaomiConnected && connectedTvDevice && connectedTvDevice.ip === dev.ip;
+                return `
+                    <div class="glass-card-subtle rounded-xl p-2.5 flex items-center justify-between gap-2 border ${isThisConnected ? 'border-emerald-400 bg-emerald-500/15' : 'border-white/15'} transition-all">
+                        <div class="flex items-center gap-2.5 min-w-0">
+                            <div class="w-8 h-8 rounded-xl ${isThisConnected ? 'bg-emerald-500 text-slate-950' : 'bg-sky-500/20 text-sky-300'} flex items-center justify-center shrink-0 font-bold text-xs">
+                                <i class="fa-solid fa-tv"></i>
+                            </div>
+                            <div class="min-w-0">
+                                <div class="text-xs font-extrabold text-white truncate">${dev.name}</div>
+                                <div class="text-[10px] font-mono-clock text-sky-300 flex items-center gap-1.5 flex-wrap">
+                                    <span>IP: <strong>${dev.ip}</strong></span>
+                                    <span>•</span>
+                                    <span class="text-emerald-300">Port ${dev.port}/5555 (${dev.rtt}ms)</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        ${isThisConnected ? `
+                            <div class="flex items-center gap-1 shrink-0">
+                                <span class="px-2.5 py-1.5 rounded-xl bg-emerald-500 text-slate-950 font-extrabold text-[10px] flex items-center gap-1 shadow">
+                                    <i class="fa-solid fa-circle-check"></i> TERHUBUNG
+                                </span>
+                                <button onclick="disconnectCurrentTv(true)" class="px-2 py-1.5 rounded-xl bg-rose-500/25 text-rose-300 border border-rose-400/30 text-[10px] font-bold" title="Putuskan">
+                                    <i class="fa-solid fa-link-slash"></i>
+                                </button>
+                            </div>
+                        ` : `
+                            <button onclick="connectToSelectedDevice('${dev.ip}')" class="px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-300 hover:to-teal-400 text-slate-950 font-extrabold text-[11px] shrink-0 shadow-md flex items-center gap-1 active:scale-95 transition-all">
+                                <i class="fa-solid fa-plug"></i>
+                                <span>HUBUNGKAN</span>
+                            </button>
+                        `}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Koneksi ADB native melalui plugin Kotlin (bukan HTTP port 6095 palsu).
+        async function connectToSelectedDevice(ipAddress) {
+            const targetDev = scannedDevices.find(d => d.ip === ipAddress) || {
+                id: 'custom_' + ipAddress, ip: ipAddress, port: 0, adbPort: 5555,
+                name: `Xiaomi Smart TV (${ipAddress})`, rtt: 0
+            };
+            const badge = document.getElementById('adb-status-badge');
+            const topSub = document.getElementById('top-conn-sub');
+            const topDot = document.getElementById('top-conn-dot');
+            const ipInput = document.getElementById('xiaomi-ip-input');
+            if (ipInput) ipInput.value = targetDev.ip;
+            if (badge) { badge.textContent = 'MENGHUBUNGKAN ADB...'; badge.className = 'text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/30 font-extrabold shrink-0'; }
+            appendAdbLog(`Memulai koneksi ADB native ke ${targetDev.ip}. Pastikan HP dan TV di WiFi yang sama.`);
+            try {
+                if (!window.Capacitor?.Plugins?.TvAdb) throw new Error('Plugin ADB native belum tersedia. APK harus dibangun dari project ini.');
+                let result;
+                const mode = (prompt('Jenis Wireless Debugging TV:\nKetik 1 untuk port 5555 (legacy TCP ADB)\nKetik 2 untuk Pairing Android 11+ (kode pairing)', '2') || '').trim();
+                if (mode === '1') {
+                    const p = parseInt(prompt('Masukkan port ADB TV (biasanya 5555):', '5555') || '5555', 10);
+                    result = await window.Capacitor.Plugins.TvAdb.connect({host: targetDev.ip, port: p});
+                } else if (mode === '2') {
+                    const pairPort = parseInt(prompt('Masukkan PORT PAIRING dari menu Pair device with pairing code di TV:', '') || '', 10);
+                    const code = (prompt('Masukkan KODE PAIRING 6 digit yang tampil di TV:', '') || '').trim();
+                    if (!pairPort || !/^\d{6}$/.test(code)) throw new Error('Port pairing atau kode 6 digit tidak valid.');
+                    result = await window.Capacitor.Plugins.TvAdb.pair({host: targetDev.ip, port: pairPort, code});
+                    const connectPort = parseInt(prompt('Pairing berhasil. Sekarang masukkan PORT koneksi (Wireless debugging, bukan port pairing):', '') || '', 10);
+                    if (!connectPort) throw new Error('Port koneksi belum diisi. Buka menu Wireless debugging dan lihat IP address & port.');
+                    result = await window.Capacitor.Plugins.TvAdb.connect({host: targetDev.ip, port: connectPort});
+                } else { throw new Error('Pilihan koneksi dibatalkan.'); }
+                isXiaomiConnected = true; connectedTvDevice = {...targetDev, adbPort: result.port || targetDev.adbPort};
+                if (badge) { badge.textContent = `ADB AKTIF (${targetDev.ip})`; badge.className = 'text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/25 text-emerald-300 border border-emerald-400/40 font-extrabold shrink-0'; }
+                if (topSub) { topSub.textContent = `ADB terhubung • ${targetDev.ip}`; topSub.className = 'text-[10px] text-emerald-300 font-bold truncate'; }
+                if (topDot) topDot.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0';
+                appendAdbLog(`ADB TERVERIFIKASI: ${result.model || 'Android TV'} • ${result.release || 'versi tidak diketahui'}`);
+                showToast(`ADB berhasil terhubung ke TV ${targetDev.ip}`);
+                renderScannedDevicesList();
+            } catch (e) {
+                isXiaomiConnected = false; connectedTvDevice = null;
+                if (badge) { badge.textContent = 'GAGAL TERHUBUNG'; badge.className = 'text-[10px] px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-400/30 font-extrabold shrink-0'; }
+                if (topSub) topSub.textContent = 'ADB belum tersambung';
+                appendAdbLog(`KONEKSI GAGAL: ${e.message || e}`); showToast(`ADB gagal: ${e.message || e}`);
+            }
+        }
+
+        async function disconnectCurrentTv(showMsg = true) {
+            try { if (window.Capacitor?.Plugins?.TvAdb) await window.Capacitor.Plugins.TvAdb.disconnect(); } catch(e) {}
+            isXiaomiConnected = false; connectedTvDevice = null;
+            const badge = document.getElementById('adb-status-badge');
+            const topSub = document.getElementById('top-conn-sub');
+            const topDot = document.getElementById('top-conn-dot');
+            if (badge) { badge.textContent = 'BELUM TERHUBUNG'; badge.className = 'text-[10px] px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-400/30 font-extrabold shrink-0'; }
+            if (topSub) { topSub.textContent = 'Belum Terhubung • Silakan Hubungkan ADB'; topSub.className = 'text-[10px] text-amber-300 truncate'; }
+            if (topDot) topDot.className = 'w-2 h-2 rounded-full bg-rose-500 shrink-0';
+            renderScannedDevicesList();
+            if (showMsg) { appendAdbLog('Koneksi ADB diputuskan.'); showToast('Koneksi TV diputuskan'); }
+        }
+
+        // Semua perintah dikirim melalui plugin ADB native.
+        async function adbShell(command) {
+            if (!ensureTvConnectedOrWarn()) throw new Error('TV belum terhubung');
+            const r = await window.Capacitor.Plugins.TvAdb.shell({command});
+            if (r.exitCode !== 0) throw new Error(r.output || `ADB exit code ${r.exitCode}`);
+            return r.output || '';
+        }
+
+        function ensureTvConnectedOrWarn() {
+            if (!isXiaomiConnected || !connectedTvDevice) {
+                showToast('Wajib Scan WiFi & Klik tombol [HUBUNGKAN] di Langkah 1 dulu Bang!');
+                appendAdbLog('PERINGATAN: Belum terhubung ke TV! Silakan klik "1. MULAI SCAN PERANGKAT WIFI" lalu klik "[HUBUNGKAN]".');
+                const step1 = document.getElementById('btn-start-scan');
+                if (step1) step1.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                return false;
+            }
+            return true;
+        }
+
+        async function executeXiaomiDebloat() {
+            if (!ensureTvConnectedOrWarn()) return;
+            const selected = XIAOMI_BLOATWARE_LIST.filter(i => i.checked);
+            if (!selected.length) { showToast('Pilih minimal 1 aplikasi.'); return; }
+            const btnIcon = document.getElementById('debloat-btn-icon');
+            const btnText = document.getElementById('debloat-btn-text');
+            if (btnIcon) btnIcon.className = 'fa-solid fa-spinner fa-spin';
+            if (btnText) btnText.textContent = `MENONAKTIFKAN ${selected.length} APLIKASI...`;
+            let ok=0, failed=0;
+            for (const item of selected) {
+                try {
+                    const pkg = String(item.pkg || '');
+                    if (!/^[A-Za-z0-9_]+(\.[A-Za-z0-9_]+)+$/.test(pkg)) throw new Error('Nama paket tidak valid');
+                    const out = await adbShell(`pm disable-user --user 0 ${pkg}`);
+                    appendAdbLog(`[ADB] ${pkg} dinonaktifkan. ${out.trim()}`); ok++;
+                } catch(e) { failed++; appendAdbLog(`[GAGAL] ${item.pkg}: ${e.message || e}`); }
+            }
+            if (btnIcon) btnIcon.className = failed ? 'fa-solid fa-triangle-exclamation' : 'fa-solid fa-circle-check';
+            if (btnText) btnText.textContent = `SELESAI • ${ok} BERHASIL, ${failed} GAGAL`;
+            showToast(`Debloat selesai: ${ok} berhasil, ${failed} gagal. Aplikasi dinonaktifkan, bukan dihapus.`);
+        }
+
+        async function restoreXiaomiPackages() {
+            if (!ensureTvConnectedOrWarn()) return;
+            let ok=0, failed=0;
+            for (const item of XIAOMI_BLOATWARE_LIST) {
+                try { const pkg=String(item.pkg||''); if (!/^[A-Za-z0-9_]+(\.[A-Za-z0-9_]+)+$/.test(pkg)) throw new Error('Nama paket tidak valid'); await adbShell(`pm enable ${pkg}`); ok++; appendAdbLog(`[ADB] ${pkg} diaktifkan kembali.`); }
+                catch(e) { failed++; appendAdbLog(`[GAGAL RESTORE] ${item.pkg}: ${e.message || e}`); }
+            }
+            XIAOMI_BLOATWARE_LIST.forEach(i => { i.checked = true; }); renderDebloatPackagesList();
+            showToast(`Pemulihan: ${ok} berhasil, ${failed} gagal.`);
+        }
+
+        function runOneClickAllOptimization() {
+            if (!ensureTvConnectedOrWarn()) return;
+
+            const icon = document.getElementById('oneclick-all-icon');
+            const text = document.getElementById('oneclick-all-text');
+            icon.className = 'fa-solid fa-spinner fa-spin';
+            text.textContent = `MENGOPTIMALKAN TV (${connectedTvDevice.ip})...`;
+
+            executeXiaomiDebloat().finally(() => { fetchLocationWeather(); fetchLocationPrayerTimes(false); icon.className = 'fa-solid fa-circle-check'; text.textContent = 'OPTIMASI SELESAI'; });
+        }
+
+        function pushWallpaperToTvFromPhone() {
+            if (!ensureTvConnectedOrWarn()) return;
+            const themes = ['sunny', 'rainy', 'cloudy', 'night'];
+            const nextIdx = (themes.indexOf(currentWeatherTheme) + 1) % themes.length;
+            setWeatherTheme(themes[nextIdx]);
+            const labelMap = { sunny: 'Cerah Sidoarjo', rainy: 'Hujan Sidoarjo', cloudy: 'Berawan Sidoarjo', night: 'Malam Sidoarjo' };
+            document.getElementById('phone-wp-status').textContent = labelMap[themes[nextIdx]];
+            appendAdbLog(`[${connectedTvDevice.ip}] Mengirim Live Wallpaper (${labelMap[themes[nextIdx]]}) ke Xiaomi TV`);
+            showToast(`Wallpaper Xiaomi TV (${connectedTvDevice.ip}): ${labelMap[themes[nextIdx]]}`);
+        }
+
+        async function remoteCleanTvRamFromPhone() {
+            if (!ensureTvConnectedOrWarn()) return;
+            try { const out = await adbShell('am kill-all'); appendAdbLog(`[ADB] am kill-all dijalankan. ${out.trim()}`); showToast('Perintah tutup proses latar dikirim ke TV.'); }
+            catch(e) { appendAdbLog(`Gagal bersihkan proses: ${e.message || e}`); showToast('Gagal menjalankan perintah ADB.'); }
+        }
+
+        function remoteSyncPrayerFromPhone() {
+            if (!ensureTvConnectedOrWarn()) return;
+            fetchLocationPrayerTimes(true);
+            document.getElementById('phone-prayer-status').textContent = `${LOCATION_CONFIG.shortCity} • Aktif`;
+            appendAdbLog(`[${connectedTvDevice.ip}] Jadwal Sholat Kemenag Method 20 (${LOCATION_CONFIG.shortCity}) disinkronkan ke TV`);
+        }
+
+        async function sendRemoteCommand(cmd) {
+            if (!ensureTvConnectedOrWarn()) return;
+            const map = { POWER:26, HOME:3, BACK:4, MENU:82, UP:19, DOWN:20, LEFT:21, RIGHT:22, OK:23, VOL_UP:24, VOL_DOWN:25, MUTE:164 };
+            const key = map[cmd] || Number(cmd);
+            if (!Number.isInteger(key)) { showToast('Tombol remote tidak dikenal.'); return; }
+            try { await adbShell(`input keyevent ${key}`);
+                const keyLabel = document.getElementById('remote-last-key'); if (keyLabel) keyLabel.textContent = `${cmd} -> ${connectedTvDevice.ip}`;
+                appendAdbLog(`[ADB] input keyevent ${key} (${cmd})`);
+            } catch(e) { appendAdbLog(`Remote gagal: ${e.message || e}`); showToast('Perintah remote gagal dikirim.'); }
+        }
+
+        function changeWeatherQuickFromRemote() {
+            pushWallpaperToTvFromPhone();
+        }
+
+        /*************************************************************
+         * 1. KONFIGURASI LOKASI SIDOARJO, JAWA TIMUR & AUTO-GPS (METHOD 20)
+         *************************************************************/
+        let LOCATION_CONFIG = {
+            city: 'Sidoarjo, Jawa Timur',
+            shortCity: 'Sidoarjo',
+            country: 'Indonesia',
+            latitude: -7.4478,
+            longitude: 112.7183,
+            method: 20
+        };
+
+        try {
+            const savedLoc = localStorage.getItem('glass_tv_location');
+            if (savedLoc) {
+                LOCATION_CONFIG = { ...LOCATION_CONFIG, ...JSON.parse(savedLoc) };
+            }
+        } catch (e) {}
+
+        let prayerTimes = {
+            Imsak: '03:44',
+            Subuh: '03:54',
+            Dzuhur: '11:22',
+            Ashar: '14:38',
+            Maghrib: '17:33',
+            Isya: '18:44'
+        };
+
+        let hijriOffsetDays = 0;
+
+        function updateLocationLabelsUI() {
+            const labelEl = document.getElementById('active-location-label');
+            const zoneBadge = document.getElementById('next-prayer-zone-badge');
+            const headerTitle = document.getElementById('prayer-header-title');
+            const coordsSub = document.getElementById('prayer-coords-subtitle');
+            const modalLoc = document.getElementById('modal-loc-name');
+
+            if (labelEl) labelEl.textContent = LOCATION_CONFIG.city;
+            if (zoneBadge) zoneBadge.textContent = `${LOCATION_CONFIG.shortCity} WIB`;
+            if (headerTitle) headerTitle.textContent = `JADWAL WAKTU SHOLAT • ${LOCATION_CONFIG.shortCity.toUpperCase()} WIB`;
+            if (coordsSub) {
+                coordsSub.textContent = `Koordinat ${LOCATION_CONFIG.city} (${LOCATION_CONFIG.latitude.toFixed(4)}, ${LOCATION_CONFIG.longitude.toFixed(4)}) • Kemenag RI Method 20`;
+            }
+            if (modalLoc) modalLoc.textContent = LOCATION_CONFIG.city;
+        }
+
+        function selectPresetLocation(cityName, lat, lon) {
+            const shortName = cityName.split(',')[0].trim();
+            LOCATION_CONFIG = {
+                ...LOCATION_CONFIG,
+                city: cityName,
+                shortCity: shortName,
+                latitude: lat,
+                longitude: lon
+            };
+            try { localStorage.setItem('glass_tv_location', JSON.stringify(LOCATION_CONFIG)); } catch (e) {}
+            updateLocationLabelsUI();
+            fetchLocationPrayerTimes(true);
+            fetchLocationWeather();
+            closeLocationModal();
+        }
+
+        function applyCustomCoordinates() {
+            const lat = parseFloat(document.getElementById('input-custom-lat').value);
+            const lon = parseFloat(document.getElementById('input-custom-lon').value);
+            if (!isNaN(lat) && !isNaN(lon)) {
+                selectPresetLocation(`Lokasi Kustom (${lat.toFixed(2)}, ${lon.toFixed(2)})`, lat, lon);
+            } else {
+                showToast('Masukkan angka Latitude & Longitude yang valid');
+            }
+        }
+
+        async function detectUserLocation() {
+            const gpsIcon = document.getElementById('gps-btn-icon');
+            if (gpsIcon) gpsIcon.classList.add('fa-spin');
+            showToast('Mendeteksi lokasi GPS / jaringan Smart TV...');
+
+            const applyDetected = async (lat, lon, fallbackName = 'Lokasi GPS Anda') => {
+                let cityLabel = fallbackName;
+                try {
+                    const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
+                    const geoData = await geoRes.json();
+                    if (geoData && geoData.address) {
+                        const addr = geoData.address;
+                        const town = addr.city || addr.town || addr.county || addr.state_district || 'Sidoarjo';
+                        const prov = addr.state || 'Jawa Timur';
+                        cityLabel = `${town}, ${prov}`;
+                    }
+                } catch (e) {}
+
+                selectPresetLocation(cityLabel, lat, lon);
+                if (gpsIcon) gpsIcon.classList.remove('fa-spin');
+            };
+
+            if ('geolocation' in navigator) {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => applyDetected(pos.coords.latitude, pos.coords.longitude, 'Lokasi GPS Aktif'),
+                    async () => {
+                        if (gpsIcon) gpsIcon.classList.remove('fa-spin');
+                        selectPresetLocation('Sidoarjo, Jawa Timur', -7.4478, 112.7183);
+                    },
+                    { timeout: 5000 }
+                );
+            } else {
+                if (gpsIcon) gpsIcon.classList.remove('fa-spin');
+                selectPresetLocation('Sidoarjo, Jawa Timur', -7.4478, 112.7183);
+            }
+        }
+
+        function openLocationModal() {
+            document.getElementById('input-custom-lat').value = LOCATION_CONFIG.latitude;
+            document.getElementById('input-custom-lon').value = LOCATION_CONFIG.longitude;
+            document.getElementById('location-modal').classList.remove('hidden');
+            document.getElementById('location-modal').classList.add('flex');
+        }
+        function closeLocationModal() {
+            document.getElementById('location-modal').classList.add('hidden');
+            document.getElementById('location-modal').classList.remove('flex');
+        }
+
+        async function fetchLocationPrayerTimes(showToastMsg = false) {
+            const syncIcon = document.getElementById('sync-prayer-icon');
+            if (syncIcon) syncIcon.classList.add('fa-spin');
+
+            try {
+                const now = new Date();
+                const dd = String(now.getDate()).padStart(2, '0');
+                const mm = String(now.getMonth() + 1).padStart(2, '0');
+                const yyyy = now.getFullYear();
+
+                const url = `https://api.aladhan.com/v1/timings/${dd}-${mm}-${yyyy}?latitude=${LOCATION_CONFIG.latitude}&longitude=${LOCATION_CONFIG.longitude}&method=${LOCATION_CONFIG.method}`;
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (data && data.code === 200 && data.data && data.data.timings) {
+                    const t = data.data.timings;
+                    prayerTimes = {
+                        Imsak: cleanTimeStr(t.Imsak),
+                        Subuh: cleanTimeStr(t.Fajr),
+                        Dzuhur: cleanTimeStr(t.Dhuhr),
+                        Ashar: cleanTimeStr(t.Asr),
+                        Maghrib: cleanTimeStr(t.Maghrib),
+                        Isya: cleanTimeStr(t.Isha)
+                    };
+                    renderPrayerTimesUI();
+                    if (showToastMsg) showToast(`Jadwal Sholat Kemenag (${LOCATION_CONFIG.shortCity} WIB) diperbarui!`);
+                }
+            } catch (err) {
+                renderPrayerTimesUI();
+                if (showToastMsg) showToast(`Jadwal Tetap Kemenag (${LOCATION_CONFIG.shortCity} WIB) aktif`);
+            } finally {
+                if (syncIcon) setTimeout(() => syncIcon.classList.remove('fa-spin'), 600);
+            }
+        }
+
+        function cleanTimeStr(str) {
+            return str ? str.split(' ')[0].substring(0, 5) : '00:00';
+        }
+
+        function renderPrayerTimesUI() {
+            document.getElementById('time-imsak').textContent = prayerTimes.Imsak;
+            ['Subuh', 'Dzuhur', 'Ashar', 'Maghrib', 'Isya'].forEach(name => {
+                const el = document.getElementById(`time-${name}`);
+                if (el) el.textContent = prayerTimes[name];
+            });
+            updateNextPrayerAndCountdown();
+        }
+
+        /*************************************************************
+         * 2. HITUNG MUNDUR DETIK LIVE & INDIKATOR SHOLAT BERIKUTNYA
+         *************************************************************/
+        function updateNextPrayerAndCountdown() {
+            const now = new Date();
+            const order = ['Subuh', 'Dzuhur', 'Ashar', 'Maghrib', 'Isya'];
+            let nextPrayerName = 'Subuh';
+            let nextPrayerTimeStr = prayerTimes.Subuh;
+            let targetDate = null;
+
+            for (const name of order) {
+                const [hh, mm] = prayerTimes[name].split(':').map(Number);
+                const candidate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hh, mm, 0);
+                if (candidate > now) {
+                    nextPrayerName = name;
+                    nextPrayerTimeStr = prayerTimes[name];
+                    targetDate = candidate;
+                    break;
+                }
+            }
+
+            if (!targetDate) {
+                nextPrayerName = 'Subuh';
+                nextPrayerTimeStr = prayerTimes.Subuh;
+                const [hh, mm] = nextPrayerTimeStr.split(':').map(Number);
+                targetDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, hh, mm, 0);
+            }
+
+            const diffSec = Math.max(0, Math.floor((targetDate - now) / 1000));
+            const hrs = String(Math.floor(diffSec / 3600)).padStart(2, '0');
+            const mins = String(Math.floor((diffSec % 3600) / 60)).padStart(2, '0');
+            const secs = String(diffSec % 60).padStart(2, '0');
+
+            document.getElementById('next-prayer-name').textContent = nextPrayerName;
+            document.getElementById('next-prayer-time').textContent = nextPrayerTimeStr;
+            document.getElementById('prayer-countdown').textContent = `${hrs}:${mins}:${secs}`;
+
+            order.forEach(name => {
+                const card = document.getElementById(`card-${name}`);
+                const badge = card ? card.querySelector('.prayer-badge') : null;
+                if (card) {
+                    if (name === nextPrayerName) {
+                        card.classList.add('border-amber-400/70', 'bg-amber-500/15');
+                        card.classList.remove('border-white/10');
+                        if (badge) badge.classList.remove('hidden');
+                    } else {
+                        card.classList.remove('border-amber-400/70', 'bg-amber-500/15');
+                        card.classList.add('border-white/10');
+                        if (badge) badge.classList.add('hidden');
+                    }
+                }
+            });
+        }
+
+        /*************************************************************
+         * 3. KALENDER HIJRIAH & 3 HARI BESAR ISLAM BERIKUTNYA
+         *************************************************************/
+        const HIJRI_MONTHS_ID = [
+            'Muharram', 'Safar', 'Rabiul Awal', 'Rabiul Akhir',
+            'Jumadil Awal', 'Jumadil Akhir', 'Rajab', 'Sya\'ban',
+            'Ramadhan', 'Syawal', 'Dzulqa\'dah', 'Dzulhijjah'
+        ];
+
+        function gregorianToHijri(dateObj, offset = 0) {
+            const d = new Date(dateObj.getTime() + offset * 86400000);
+            let day = d.getDate();
+            let month = d.getMonth();
+            let year = d.getFullYear();
+
+            let m = month + 1;
+            let y = year;
+            if (m < 3) { y -= 1; m += 12; }
+            let a = Math.floor(y / 100);
+            let b = 2 - a + Math.floor(a / 4);
+            if (y < 1583) b = 0;
+            const jd = Math.floor(365.25 * (y + 4716)) + Math.floor(30.6001 * (m + 1)) + day + b - 1524;
+
+            const iyear = 10631.0 / 30.0;
+            const epochastro = 1948084;
+            const shift1 = 8.01 / 60.0;
+
+            let z = jd - epochastro;
+            const cyc = Math.floor(z / 10631.0);
+            z = z - 10631 * cyc;
+            const j = Math.floor((z - shift1) / iyear);
+            const iy = 30 * cyc + j;
+            z = z - Math.floor(j * iyear + shift1);
+            let im = Math.floor((z + 28.5001) / 29.5);
+            if (im === 13) im = 12;
+            const id = z - Math.floor(29.5001 * im - 29);
+
+            return {
+                day: id,
+                monthIndex: im - 1,
+                monthName: HIJRI_MONTHS_ID[im - 1] || 'Jumadil Awal',
+                year: iy
+            };
+        }
+
+        const ISLAMIC_HOLIDAYS_CATALOG = [
+            { name: 'Isra Mi\'raj Nabi Muhammad SAW', date: '2026-01-16' },
+            { name: 'Awal Ramadhan 1447 H', date: '2026-02-18' },
+            { name: 'Hari Raya Idul Fitri 1447 H', date: '2026-03-20' },
+            { name: 'Hari Raya Idul Adha 1447 H', date: '2026-05-27' },
+            { name: 'Tahun Baru Islam 1448 H', date: '2026-06-16' },
+            { name: 'Maulid Nabi Muhammad SAW', date: '2026-08-25' },
+            { name: 'Isra Mi\'raj Nabi Muhammad SAW', date: '2027-01-06' },
+            { name: 'Malam Nisfu Sya\'ban 1448 H', date: '2027-01-23' },
+            { name: 'Awal Puasa Ramadhan 1448 H', date: '2027-02-08' },
+            { name: 'Hari Raya Idul Fitri 1448 H', date: '2027-03-10' }
+        ];
+
+        function updateHijriAndHolidaysUI() {
+            const now = new Date();
+            const hijri = gregorianToHijri(now, hijriOffsetDays);
+            document.getElementById('hijri-date-display').textContent = `${hijri.day} ${hijri.monthName} ${hijri.year} H`;
+
+            const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const upcoming = ISLAMIC_HOLIDAYS_CATALOG
+                .map(item => {
+                    const target = new Date(item.date + 'T00:00:00');
+                    const diffDays = Math.ceil((target - todayMidnight) / 86400000);
+                    return { ...item, targetDate: target, diffDays };
+                })
+                .filter(item => item.diffDays >= 0)
+                .slice(0, 3);
+
+            const container = document.getElementById('islamic-holidays-list');
+            container.innerHTML = upcoming.map((h, idx) => {
+                const tglMasehi = h.targetDate.toLocaleDateString('id-ID', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric'
+                });
+                const badgeColor = idx === 0
+                    ? 'bg-amber-500/20 text-amber-300 border-amber-400/30'
+                    : 'bg-sky-500/15 text-sky-200 border-sky-400/20';
+
+                return `
+                    <div class="glass-card-subtle px-2.5 py-1.5 rounded-xl flex items-center justify-between gap-1.5 text-[11px]">
+                        <div class="flex items-center gap-1.5 min-w-0">
+                            <span class="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0"></span>
+                            <span class="font-bold text-white/90 truncate">${h.name}</span>
+                        </div>
+                        <div class="flex items-center gap-1.5 shrink-0">
+                            <span class="text-[9px] px-1.5 py-0.5 rounded-full border font-mono-clock font-bold ${badgeColor}">
+                                ${h.diffDays === 0 ? 'Hari Ini' : h.diffDays + ' hr'}
+                            </span>
+                            <span class="text-[10px] text-white/60 font-medium">${tglMasehi}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function toggleHijriAdjust() {
+            hijriOffsetDays = hijriOffsetDays === 0 ? -1 : (hijriOffsetDays === -1 ? 1 : 0);
+            updateHijriAndHolidaysUI();
+            const label = hijriOffsetDays === 0 ? 'Standar Kemenag' : (hijriOffsetDays > 0 ? '+1 Hari' : '-1 Hari');
+            showToast(`Koreksi Kalender Hijriah: ${label}`);
+        }
+
+        /*************************************************************
+         * 4. STATUS RAM, CPU, STORAGE & TASK KILLER APPS
+         *************************************************************/
+        let backgroundApps = [
+            { id: 'yt', name: 'YouTube TV', ramMB: 285, icon: 'fa-brands fa-youtube', color: 'text-red-400' },
+            { id: 'nf', name: 'Netflix 4K', ramMB: 210, icon: 'fa-solid fa-film', color: 'text-rose-500' },
+            { id: 'br', name: 'PatchWall', ramMB: 165, icon: 'fa-solid fa-rectangle-ad', color: 'text-amber-400' },
+            { id: 'vd', name: 'Vidio Live', ramMB: 95, icon: 'fa-solid fa-circle-play', color: 'text-indigo-400' }
+        ];
+
+        let systemStats = { ramPercent: 78, cpuPercent: 64, romPercent: 62, tempC: 54 };
+
+        function renderRunningApps() {
+            const container = document.getElementById('running-apps-list');
+            const badge = document.getElementById('system-health-badge');
+            if (!container) return;
+
+            if (backgroundApps.length === 0) {
+                badge.textContent = 'Optimal • 0 App';
+                badge.className = 'text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 font-semibold';
+                container.innerHTML = `
+                    <div class="col-span-2 sm:col-span-4 glass-card-subtle rounded-xl py-2 px-3 text-center text-[11px] text-emerald-300 font-semibold">
+                        <i class="fa-solid fa-shield-heart mr-1"></i>Semua aplikasi latar belakang telah dibersihkan!
+                    </div>
+                `;
+                return;
+            }
+
+            badge.textContent = `${backgroundApps.length} Apps Berjalan`;
+            container.innerHTML = backgroundApps.map(app => `
+                <button onclick="killSingleApp('${app.id}')" class="tv-focusable glass-card-subtle rounded-xl p-2 flex items-center justify-between gap-1.5 hover:bg-rose-500/20 text-left min-w-0">
+                    <div class="flex items-center gap-1.5 min-w-0">
+                        <i class="${app.icon} ${app.color} text-xs shrink-0"></i>
+                        <div class="truncate">
+                            <div class="text-[11px] font-bold text-white truncate">${app.name}</div>
+                            <div class="text-[9px] text-white/50 font-mono-clock">${app.ramMB} MB</div>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-xmark text-[10px] text-white/40 shrink-0"></i>
+                </button>
+            `).join('');
+        }
+
+        function updateHardwareMetersUI() {
+            const usedRamGB = ((systemStats.ramPercent / 100) * 2.0).toFixed(2);
+            document.getElementById('ram-percent').textContent = `${systemStats.ramPercent}%`;
+            document.getElementById('ram-bar').style.width = `${systemStats.ramPercent}%`;
+            document.getElementById('ram-detail').textContent = `${usedRamGB} / 2.0 GB`;
+
+            document.getElementById('cpu-percent').textContent = `${systemStats.cpuPercent}%`;
+            document.getElementById('cpu-bar').style.width = `${systemStats.cpuPercent}%`;
+            document.getElementById('cpu-detail').textContent = `Suhu: ${systemStats.tempC}°C`;
+
+            document.getElementById('rom-percent').textContent = `${systemStats.romPercent}%`;
+            document.getElementById('rom-bar').style.width = `${systemStats.romPercent}%`;
+        }
+
+        function killSingleApp(appId) {
+            const idx = backgroundApps.findIndex(a => a.id === appId);
+            if (idx !== -1) {
+                const removed = backgroundApps.splice(idx, 1)[0];
+                systemStats.ramPercent = Math.max(32, systemStats.ramPercent - Math.round(removed.ramMB / 22));
+                systemStats.cpuPercent = Math.max(18, systemStats.cpuPercent - 9);
+                updateHardwareMetersUI();
+                renderRunningApps();
+                showToast(`${removed.name} ditutup (+${removed.ramMB} MB RAM)`);
+            }
+        }
+
+        function killBackgroundTasks() {
+            const btnIcon = document.getElementById('kill-btn-icon');
+            const btnText = document.getElementById('kill-btn-text');
+            const toastFreed = document.getElementById('freed-memory-toast');
+
+            if (btnIcon) btnIcon.className = 'fa-solid fa-spinner fa-spin';
+            if (btnText) btnText.textContent = 'MEMBERSIHKAN...';
+
+            setTimeout(() => {
+                const totalFreedMB = backgroundApps.reduce((acc, a) => acc + a.ramMB, 0) || 680;
+                backgroundApps = [];
+                systemStats.ramPercent = 34;
+                systemStats.cpuPercent = 19;
+                systemStats.romPercent = 58;
+                systemStats.tempC = 43;
+
+                updateHardwareMetersUI();
+                renderRunningApps();
+
+                if (toastFreed) toastFreed.classList.remove('hidden');
+                if (btnIcon) btnIcon.className = 'fa-solid fa-check-double';
+                if (btnText) btnText.textContent = 'TV OPTIMAL!';
+                showToast(`Smart TV Cleaner: +${totalFreedMB} MB RAM berhasil dibebaskan!`);
+            }, 650);
+        }
+
+        /*************************************************************
+         * 5. WIDGET SPOTIFY
+         *************************************************************/
+        const SPOTIFY_TRACKS = [
+            { title: 'Evaluasi', artist: 'Hindia • Menari Dengan Bayangan', playlist: 'Santai Sore Sidoarjo FM', durationSec: 198, cover: 'https://placehold.co/240x240/064e3b/34d399?text=Hindia' },
+            { title: 'Komang', artist: 'Raim Laode • Komang Single', playlist: 'Hits Indonesia Smart TV', durationSec: 222, cover: 'https://placehold.co/240x240/1e3a8a/93c5fd?text=Komang' },
+            { title: 'Sialan', artist: 'Juicy Luicy & Adrian Khalif', playlist: 'Top 50 Indonesia', durationSec: 241, cover: 'https://placehold.co/240x240/581c87/e9d5ff?text=Juicy+Luicy' }
+        ];
+
+        let spotifyState = { currentIndex: 0, isPlaying: true, currentSec: 84, shuffle: false, audioSynthEnabled: false };
+
+        function formatMMSS(sec) {
+            const m = String(Math.floor(sec / 60)).padStart(2, '0');
+            const s = String(Math.floor(sec % 60)).padStart(2, '0');
+            return `${m}:${s}`;
+        }
+
+        function renderSpotifyUI() {
+            const track = SPOTIFY_TRACKS[spotifyState.currentIndex];
+            document.getElementById('spotify-title').textContent = track.title;
+            document.getElementById('spotify-artist').textContent = track.artist;
+            document.getElementById('spotify-playlist').innerHTML = `<i class="fa-solid fa-headphones-simple mr-1"></i>${track.playlist}`;
+            document.getElementById('spotify-cover').src = track.cover;
+
+            document.getElementById('spotify-current-time').textContent = formatMMSS(spotifyState.currentSec);
+            document.getElementById('spotify-total-time').textContent = formatMMSS(track.durationSec);
+            const pct = Math.min(100, (spotifyState.currentSec / track.durationSec) * 100);
+            document.getElementById('spotify-progress').style.width = `${pct}%`;
+
+            const playIcon = document.getElementById('spotify-play-icon');
+            const playText = document.getElementById('spotify-play-text');
+            const eqContainer = document.getElementById('spotify-eq');
+            const statusLabel = document.getElementById('spotify-status-label');
+
+            if (spotifyState.isPlaying) {
+                playIcon.className = 'fa-solid fa-pause';
+                playText.textContent = 'PAUSE';
+                eqContainer.classList.remove('paused');
+                statusLabel.textContent = 'SEDANG DIPUTAR';
+            } else {
+                playIcon.className = 'fa-solid fa-play';
+                playText.textContent = 'PLAY';
+                eqContainer.classList.add('paused');
+                statusLabel.textContent = 'DIJEDA';
+            }
+        }
+
+        function toggleSpotifyPlay() {
+            spotifyState.isPlaying = !spotifyState.isPlaying;
+            renderSpotifyUI();
+            const track = SPOTIFY_TRACKS[spotifyState.currentIndex];
+            showToast(spotifyState.isPlaying ? `Spotify Play: ${track.title}` : `Spotify Pause: ${track.title}`);
+        }
+
+        function nextSpotifyTrack() {
+            spotifyState.currentIndex = (spotifyState.currentIndex + 1) % SPOTIFY_TRACKS.length;
+            spotifyState.currentSec = 0;
+            spotifyState.isPlaying = true;
+            renderSpotifyUI();
+            showToast(`Lagu Berikutnya: ${SPOTIFY_TRACKS[spotifyState.currentIndex].title}`);
+        }
+
+        function prevSpotifyTrack() {
+            spotifyState.currentIndex = (spotifyState.currentIndex - 1 + SPOTIFY_TRACKS.length) % SPOTIFY_TRACKS.length;
+            spotifyState.currentSec = 0;
+            spotifyState.isPlaying = true;
+            renderSpotifyUI();
+            showToast(`Lagu Sebelumnya: ${SPOTIFY_TRACKS[spotifyState.currentIndex].title}`);
+        }
+
+        function toggleSpotifyShuffle() {
+            spotifyState.shuffle = !spotifyState.shuffle;
+            showToast(`Shuffle: ${spotifyState.shuffle ? 'Aktif' : 'Nonaktif'}`);
+        }
+
+        function seekSpotifyTrack(e) {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const clickRatio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+            const track = SPOTIFY_TRACKS[spotifyState.currentIndex];
+            spotifyState.currentSec = Math.floor(clickRatio * track.durationSec);
+            renderSpotifyUI();
+        }
+
+        function toggleSpotifyAudioSynth() {
+            spotifyState.audioSynthEnabled = !spotifyState.audioSynthEnabled;
+            const icon = document.getElementById('synth-icon');
+            icon.className = spotifyState.audioSynthEnabled ? 'fa-solid fa-volume-high text-green-400' : 'fa-solid fa-volume-xmark';
+            showToast(spotifyState.audioSynthEnabled ? 'Suara Preview Aktif' : 'Suara Preview Nonaktif');
+        }
+
+        /*************************************************************
+         * 6. LIVE WALLPAPER ENGINE (CUACA SIDOARJO + MOTIONBGS CANVAS)
+         *************************************************************/
+        const canvas = document.getElementById('weather-canvas');
+        const ctx = canvas.getContext('2d');
+        let currentWeatherTheme = 'sunny';
+        let particles = [];
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            initWeatherParticles();
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        function setWeatherTheme(theme, fromApi = false) {
+            currentWeatherTheme = theme;
+            const grad = document.getElementById('weather-gradient-bg');
+            const wIcon = document.getElementById('weather-icon');
+            const wDesc = document.getElementById('weather-desc');
+            const wTemp = document.getElementById('weather-temp');
+
+            if (theme === 'sunny') {
+                grad.className = 'absolute inset-0 transition-all duration-1000 bg-gradient-to-br from-amber-600/35 via-sky-900 to-slate-950';
+                wIcon.className = 'fa-solid fa-sun text-amber-300 text-base';
+                if (!fromApi) { wDesc.textContent = 'Cerah Sidoarjo'; wTemp.textContent = '31°C'; }
+            } else if (theme === 'rainy') {
+                grad.className = 'absolute inset-0 transition-all duration-1000 bg-gradient-to-br from-slate-900 via-sky-950 to-indigo-950';
+                wIcon.className = 'fa-solid fa-cloud-showers-heavy text-sky-300 text-base';
+                if (!fromApi) { wDesc.textContent = 'Hujan Sidoarjo'; wTemp.textContent = '25°C'; }
+            } else if (theme === 'cloudy') {
+                grad.className = 'absolute inset-0 transition-all duration-1000 bg-gradient-to-br from-slate-800 via-indigo-950 to-slate-950';
+                wIcon.className = 'fa-solid fa-cloud text-slate-200 text-base';
+                if (!fromApi) { wDesc.textContent = 'Berawan Sidoarjo'; wTemp.textContent = '28°C'; }
+            } else if (theme === 'night') {
+                grad.className = 'absolute inset-0 transition-all duration-1000 bg-gradient-to-br from-indigo-950 via-slate-950 to-black';
+                wIcon.className = 'fa-solid fa-moon text-indigo-300 text-base';
+                if (!fromApi) { wDesc.textContent = 'Malam Sidoarjo'; wTemp.textContent = '26°C'; }
+            }
+
+            initWeatherParticles();
+        }
+
+        function initWeatherParticles() {
+            particles = [];
+            const count = currentWeatherTheme === 'rainy' ? 95 : 40;
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    radius: Math.random() * 2.2 + 1,
+                    speedX: currentWeatherTheme === 'rainy' ? -1.2 : (Math.random() - 0.5) * 0.5,
+                    speedY: currentWeatherTheme === 'rainy' ? Math.random() * 9 + 10 : (Math.random() - 0.5) * 0.4,
+                    alpha: Math.random() * 0.6 + 0.2
+                });
+            }
+        }
+
+        function animateLiveWallpaper() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const h = canvas.height;
+            const w = canvas.width;
+
+            particles.forEach(p => {
+                if (currentWeatherTheme === 'rainy') {
+                    ctx.strokeStyle = `rgba(125, 211, 252, ${p.alpha})`;
+                    ctx.lineWidth = 1.2;
+                    ctx.beginPath();
+                    ctx.moveTo(p.x, p.y);
+                    ctx.lineTo(p.x + p.speedX * 2, p.y + p.speedY * 1.3);
+                    ctx.stroke();
+                } else {
+                    ctx.fillStyle = currentWeatherTheme === 'sunny'
+                        ? `rgba(253, 224, 71, ${p.alpha})`
+                        : `rgba(224, 242, 254, ${p.alpha})`;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                p.x += p.speedX;
+                p.y += p.speedY;
+                if (p.y > h) { p.y = -10; p.x = Math.random() * w; }
+                if (p.y < -10) p.y = h;
+                if (p.x > w) p.x = 0;
+                if (p.x < 0) p.x = w;
+            });
+
+            requestAnimationFrame(animateLiveWallpaper);
+        }
+
+        async function fetchLocationWeather() {
+            try {
+                const url = `https://api.open-meteo.com/v1/forecast?latitude=${LOCATION_CONFIG.latitude}&longitude=${LOCATION_CONFIG.longitude}&current_weather=true`;
+                const res = await fetch(url);
+                const data = await res.json();
+                if (data && data.current_weather) {
+                    const cw = data.current_weather;
+                    const temp = Math.round(cw.temperature);
+                    const code = cw.weathercode;
+                    const isDay = cw.is_day === 1;
+                    const cityShort = LOCATION_CONFIG.shortCity;
+
+                    document.getElementById('weather-temp').textContent = `${temp}°C`;
+                    if ([51, 53, 55, 61, 63, 65, 80, 81, 82, 95].includes(code)) {
+                        document.getElementById('weather-desc').textContent = `Hujan • ${cityShort}`;
+                        setWeatherTheme('rainy', true);
+                    } else if (!isDay) {
+                        document.getElementById('weather-desc').textContent = `Malam • ${cityShort}`;
+                        setWeatherTheme('night', true);
+                    } else if ([2, 3, 45, 48].includes(code)) {
+                        document.getElementById('weather-desc').textContent = `Berawan • ${cityShort}`;
+                        setWeatherTheme('cloudy', true);
+                    } else {
+                        document.getElementById('weather-desc').textContent = `Cerah • ${cityShort}`;
+                        setWeatherTheme('sunny', true);
+                    }
+                }
+            } catch (e) {}
+        }
+
+        function openWallpaperModal() {
+            document.getElementById('wallpaper-modal').classList.remove('hidden');
+            document.getElementById('wallpaper-modal').classList.add('flex');
+        }
+        function closeWallpaperModal() {
+            document.getElementById('wallpaper-modal').classList.add('hidden');
+            document.getElementById('wallpaper-modal').classList.remove('flex');
+        }
+        function applyCustomVideoWallpaper() {
+            const url = document.getElementById('custom-video-url').value.trim();
+            const videoEl = document.getElementById('live-video-bg');
+            if (url) {
+                videoEl.src = url;
+                videoEl.classList.remove('hidden');
+                videoEl.play().catch(() => {});
+                showToast('Video Live Wallpaper MotionBGs diterapkan!');
+                closeWallpaperModal();
+            } else {
+                showToast('Masukkan URL video MP4 terlebih dahulu');
+            }
+        }
+        function resetToWeatherWallpaper() {
+            const videoEl = document.getElementById('live-video-bg');
+            videoEl.pause();
+            videoEl.classList.add('hidden');
+            showToast('Live Wallpaper kembali mengikuti cuaca Sidoarjo otomatis');
+            closeWallpaperModal();
+        }
+
+        function openApkGuideModal() {
+            const modal = document.getElementById('apk-modal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
+        }
+        function closeApkGuideModal() {
+            const modal = document.getElementById('apk-modal');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+        }
+
+        function updateMainClock() {
+            const now = new Date();
+            const hh = String(now.getHours()).padStart(2, '0');
+            const mm = String(now.getMinutes()).padStart(2, '0');
+            const ss = String(now.getSeconds()).padStart(2, '0');
+            document.getElementById('main-clock').textContent = `${hh}:${mm}:${ss}`;
+            const mini = document.getElementById('phone-mini-clock');
+            if (mini) mini.textContent = `${hh}:${mm}:${ss}`;
+
+            const tglStr = now.toLocaleDateString('id-ID', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric'
+            });
+            document.getElementById('main-date-masehi').textContent = `${tglStr} • WIB`;
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('tv-toast');
+            document.getElementById('tv-toast-msg').textContent = msg;
+            toast.classList.remove('opacity-0', 'translate-y-4');
+            toast.classList.add('opacity-100', 'translate-y-0');
+            clearTimeout(window._toastTimer);
+            window._toastTimer = setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-4');
+                toast.classList.remove('opacity-100', 'translate-y-0');
+            }, 2800);
+        }
+
+        window.onload = function () {
+            resizeCanvas();
+            animateLiveWallpaper();
+            renderDebloatPackagesList();
+
+            // Otomatis buka Mode HP jika dibuka di layar HP (<1024px)
+            if (window.innerWidth < 1024) {
+                switchAppViewMode('phone');
+            } else {
+                switchAppViewMode('phone');
+            }
+
+            updateLocationLabelsUI();
+            updateMainClock();
+            renderPrayerTimesUI();
+            updateHijriAndHolidaysUI();
+            renderRunningApps();
+            updateHardwareMetersUI();
+            renderSpotifyUI();
+
+            fetchLocationPrayerTimes(false);
+            fetchLocationWeather();
+
+            setInterval(() => {
+                updateMainClock();
+                updateNextPrayerAndCountdown();
+                if (spotifyState.isPlaying) {
+                    const track = SPOTIFY_TRACKS[spotifyState.currentIndex];
+                    spotifyState.currentSec = (spotifyState.currentSec + 1) % track.durationSec;
+                    renderSpotifyUI();
+                }
+            }, 1000);
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,99 @@
+name: Build Glass TV APK Bersih
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build-android-apk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 1. Ambil File dari Repo
+        uses: actions/checkout@v4
+
+      - name: 2. Siapkan Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 3. Siapkan Java JDK 21 (Disesuaikan dengan Capacitor 7)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: 4. Bungkus index.html Menjadi Project Android
+        run: |
+          mkdir -p www
+          if [ -f "index.html" ]; then
+            cp index.html www/index.html
+          else
+            echo "<h1>File index.html belum diupload</h1>" > www/index.html
+          fi
+          if [ -f "icon.png" ]; then cp icon.png www/icon.png; fi
+
+          npm init -y
+          npm install @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7 @capacitor/assets
+
+          npx cap init "GlassTVRemote" "com.ismanto.glasstvremote" --web-dir www
+          npx cap add android
+
+      - name: 5. Pasang Icon.png Otomatis ke APK
+        run: |
+          if [ -f "icon.png" ]; then
+            mkdir -p assets
+            cp icon.png assets/icon-only.png
+            cp icon.png assets/icon-foreground.png
+            cp icon.png assets/icon-background.png
+            cp icon.png assets/splash.png
+            npx capacitor-assets generate --android || true
+          fi
+
+      - name: 6. Konfigurasi Cleartext & Atasi Lisensi Ganda
+        run: |
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          sed -i 's/<application/<application android:usesCleartextTraffic="true"/g' "$MANIFEST"
+          sed -i 's/<manifest[^>]*>/&\n    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" \/>\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" \/>\n    <uses-permission android:name="android.permission.INTERNET" \/>/' "$MANIFEST"
+
+          cat << 'EOF' > capacitor.config.json
+          {
+            "appId": "com.ismanto.glasstvremote",
+            "appName": "GlassTVRemote",
+            "webDir": "www",
+            "server": {
+              "cleartext": true,
+              "allowNavigation": ["*"]
+            },
+            "android": {
+              "allowMixedContent": true
+            }
+          }
+          EOF
+          npx cap sync android
+
+          cat << 'EOF' >> android/app/build.gradle
+
+          android {
+              packagingOptions {
+                  resources.excludes += "META-INF/LICENSE.md"
+                  resources.excludes += "META-INF/LICENSE-notice.md"
+                  resources.excludes += "META-INF/NOTICE.md"
+                  resources.excludes += "META-INF/LICENSE"
+                  resources.excludes += "META-INF/NOTICE"
+              }
+          }
+          EOF
+
+      - name: 7. Compile & Build File APK
+        working-directory: ./android
+        run: |
+          chmod +x gradlew
+          ./gradlew clean assembleDebug
+
+      - name: 8. Upload Hasil File APK Siap Download
+        uses: actions/upload-artifact@v4
+        with:
+          name: GlassTV-Remote-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk

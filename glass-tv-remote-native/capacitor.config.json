@@ -1,0 +1,8 @@
+{
+  "appId": "com.ismanto.glasstvremote",
+  "appName": "GlassTVRemote",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": true
+  }
+}
