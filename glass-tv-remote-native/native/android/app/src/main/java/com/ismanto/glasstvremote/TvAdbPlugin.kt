@@ -3,6 +3,7 @@ package com.ismanto.glasstvremote
 import com.getcapacitor.*
 import com.flyfishxu.kadb.Kadb
 import java.util.concurrent.Executors
+import kotlinx.coroutines.runBlocking
 
 @CapacitorPlugin(name = "TvAdb")
 class TvAdbPlugin : Plugin() {
@@ -35,7 +36,9 @@ class TvAdbPlugin : Plugin() {
         if (host.isBlank() || port !in 1..65535 || !code.matches(Regex("\\d{6}"))) { call.reject("Host, port pairing, atau kode pairing tidak valid"); return }
         executor.execute {
             try {
-                Kadb.pair(host, port, code)
+                runBlocking {
+                    Kadb.pair(host, port, code)
+                }
                 val ret = JSObject(); ret.put("ok", true); ret.put("host", host); ret.put("paired", true); call.resolve(ret)
             } catch (e: Exception) { call.reject("Pairing ADB gagal: ${e.message}", e) }
         }
